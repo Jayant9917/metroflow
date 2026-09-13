@@ -1,0 +1,1 @@
+ALTER TYPE "public"."user_role_type" ADD VALUE 'OPERATOR' BEFORE 'ADMIN';

@@ -1,0 +1,109 @@
+"use client";
+import { FormEvent, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Toast } from "../toast";
+const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+export default function ResetPasswordPage() {
+  const params = useSearchParams();
+  const [token, setToken] = useState(params.get("token") ?? "");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch(`${api}/api/v1/auth/password-reset/confirm`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message ?? "Unable to reset password.");
+      setDone(true);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Service temporarily unavailable.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <main className="auth-shell">
+      <section className="auth-visual">
+        <div className="brand">MetroFlow</div>
+        <div className="visual-copy">
+          <h1>A fresh start.</h1>
+          <p>Choose a new secure password and continue your journey.</p>
+        </div>
+        <div className="visual-foot">Smart transit, clear journeys.</div>
+      </section>
+      <section className="auth-panel">
+        <div className="auth-card">
+          {error && <Toast message={error} onClose={() => setError("")} />}
+          <div className="eyebrow">Account recovery</div>
+          <h2>Reset password</h2>
+          {done ? (
+            <>
+              <p className="subtle">
+                Your password was changed successfully. You can now sign in.
+              </p>
+              <a className="primary dashboard-cta" href="/login">
+                Go to sign in
+              </a>
+            </>
+          ) : (
+            <form onSubmit={submit}>
+              <label className="field">
+                Reset token
+                <input
+                  required
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                New password
+                <input
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="field">
+                Confirm password
+                <input
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </label>
+              <button className="primary" disabled={loading}>
+                {loading ? "Updating…" : "Reset password"}
+              </button>
+            </form>
+          )}
+          <p className="auth-link">
+            <a href="/login">Back to sign in</a>
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}
