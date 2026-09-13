@@ -1,0 +1,14 @@
+services:
+  postgres: { image: postgres:16-alpine, environment: { POSTGRES_USER: metroflow, POSTGRES_PASSWORD: metroflow, POSTGRES_DB: metroflow_core }, ports: ["5432:5432"], volumes: ["metroflow-postgres:/var/lib/postgresql/data", "./docker/init-databases.sql:/docker-entrypoint-initdb.d/01-init.sql:ro"] }
+  redis: { image: redis:7-alpine, ports: ["6379:6379"] }
+  kafka:
+    image: bitnamilegacy/kafka:3.9.0-debian-12-r0
+    ports: ["9092:9092"]
+    environment: { KAFKA_CFG_NODE_ID: 1, KAFKA_CFG_PROCESS_ROLES: controller,broker, KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093, KAFKA_CFG_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093, KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092, KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT, KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL, KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER, ALLOW_PLAINTEXT_LISTENER: "yes" }
+  web: { build: { context: ., dockerfile: docker/web.Dockerfile }, ports: ["3000:3000"], depends_on: [api-gateway] }
+  api-gateway: { build: { context: ., dockerfile: docker/api-gateway.Dockerfile }, ports: ["3001:3001"], depends_on: [core-api, payment-service, gate-service] }
+  core-api: { build: { context: ., dockerfile: docker/core-api.Dockerfile }, ports: ["3002:3002"], depends_on: [postgres, redis, kafka] }
+  payment-service: { build: { context: ., dockerfile: docker/payment-service.Dockerfile }, ports: ["3003:3003"], depends_on: [postgres, kafka] }
+  worker: { build: { context: ., dockerfile: docker/worker.Dockerfile }, ports: ["3004:3004"], depends_on: [postgres, kafka] }
+  gate-service: { build: { context: ., dockerfile: docker/gate-service.Dockerfile }, ports: ["3005:3005"], depends_on: [redis] }
+volumes: { metroflow-postgres: }

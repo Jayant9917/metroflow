@@ -1,0 +1,7 @@
+{
+  "name": "metroflow",
+  "private": true,
+  "packageManager": "pnpm@10.34.4",
+  "scripts": { "dev": "turbo run dev --parallel", "build": "turbo run build", "lint": "turbo run lint", "typecheck": "turbo run typecheck" },
+  "devDependencies": { "@nestjs/cli": "^11.0.0", "@types/node": "^22.0.0", "turbo": "^2.5.0", "typescript": "^5.7.0" }
+}
