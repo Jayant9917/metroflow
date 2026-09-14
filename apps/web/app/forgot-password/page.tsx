@@ -53,6 +53,8 @@ export default function ForgotPasswordPage() {
             <label className="field">
               Email
               <input
+                id="recovery-email"
+                name="email"
                 required
                 type="email"
                 value={email}

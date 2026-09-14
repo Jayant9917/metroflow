@@ -1,0 +1,2 @@
+import { FeaturePage } from "../app-shell";
+export default function AdminPage() { return <FeaturePage eyebrow="Administration" title="Operations overview" description="Choose an operational area to inspect." links={[{ label: "Stations and gates", href: "/admin/stations" }, { label: "Tickets", href: "/admin/tickets" }, { label: "Journeys", href: "/admin/journeys" }, { label: "Payments", href: "/admin/payments" }, { label: "Gate events", href: "/admin/gate-events" }, { label: "Inconsistencies", href: "/admin/inconsistencies" }, { label: "Outbox", href: "/admin/outbox" }]}/>; }

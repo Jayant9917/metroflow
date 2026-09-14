@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useState } from "react";
 import { Toast } from "../toast";
+import { PasswordField } from "../password-field";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -65,6 +66,8 @@ export default function RegisterPage() {
             <label className="field">
               Email
               <input
+                id="register-email"
+                name="email"
                 required
                 type="email"
                 value={email}
@@ -72,30 +75,8 @@ export default function RegisterPage() {
                 autoComplete="email"
               />
             </label>
-            <label className="field">
-              Password
-              <input
-                required
-                minLength={8}
-                maxLength={128}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="field">
-              Confirm password
-              <input
-                required
-                minLength={8}
-                maxLength={128}
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
+            <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
+            <PasswordField label="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
             {error && (
               <div className="feedback error" role="alert">
                 {error}

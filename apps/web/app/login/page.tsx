@@ -3,6 +3,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { setAccessToken } from "../auth-client";
 import { Toast } from "../toast";
+import { PasswordField } from "../password-field";
 
 const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -97,6 +98,8 @@ export default function LoginPage() {
             <label className="field">
               Email
               <input
+                id="login-email"
+                name="email"
                 required
                 type="email"
                 value={email}
@@ -106,16 +109,7 @@ export default function LoginPage() {
             </label>
             {mode === "password" ? (
               <>
-                <label className="field">
-                  Password
-                  <input
-                    required
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                  />
-                </label>
+                <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
                 <p className="auth-link auth-link-right">
                   <a href="/forgot-password">Forgot password?</a>
                 </p>
@@ -125,6 +119,8 @@ export default function LoginPage() {
                 <label className="field">
                   Email OTP
                   <input
+                    id="otp-code"
+                    name="code"
                     required
                     inputMode="numeric"
                     pattern="[0-9]{6}"

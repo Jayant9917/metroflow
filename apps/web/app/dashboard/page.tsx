@@ -37,7 +37,8 @@ export default function DashboardPage() {
   return (
     <main className="dashboard">
       <header className="dashboard-nav">
-        <a className="brand" href="/dashboard">
+        <a className="brand brand-lockup" href="/dashboard">
+          <img src="/metro.png" alt="" aria-hidden="true" />
           MetroFlow
         </a>
         <nav>

@@ -7,6 +7,7 @@ import {
   HttpException,
   HttpStatus,
   Module,
+  Param,
   Post,
   Res,
 } from "@nestjs/common";
@@ -196,6 +197,101 @@ class ProtectedAuthProxyController {
     return this.get("/api/v1/auth/operations", authorization);
   }
 }
+@Controller("api/v1/stations")
+class StationsProxyController {
+  @Get()
+  async list(@Headers("authorization") authorization: string) {
+    const response = await fetch(
+      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/stations`,
+      { headers: { authorization: authorization ?? "" } },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+}
+@Controller("api/v1/fare-quotes")
+class FareQuotesProxyController {
+  @Post()
+  async create(
+    @Headers("authorization") authorization: string,
+    @Body() body: unknown,
+  ) {
+    const response = await fetch(
+      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/fare-quotes`,
+      {
+        method: "POST",
+        headers: {
+          authorization: authorization ?? "",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+}
+@Controller("api/v1/purchases")
+class PurchasesProxyController {
+  private async forward(
+    path: string,
+    method: string,
+    authorization: string,
+    body?: unknown,
+  ) {
+    const headers: Record<string, string> = { authorization: authorization ?? "" };
+    if (body !== undefined) headers["content-type"] = "application/json";
+    const response = await fetch(
+      `${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`,
+      { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+
+  @Post()
+  create(@Headers("authorization") authorization: string, @Body() body: unknown) {
+    return this.forward("/api/v1/purchases", "POST", authorization, body);
+  }
+
+  @Get()
+  list(@Headers("authorization") authorization: string) {
+    return this.forward("/api/v1/purchases", "GET", authorization);
+  }
+
+  @Get(":purchaseId")
+  get(@Headers("authorization") authorization: string, @Param("purchaseId") purchaseId: string) {
+    return this.forward(`/api/v1/purchases/${purchaseId}`, "GET", authorization);
+  }
+}
+@Controller("api/v1/payments")
+class PaymentsProxyController {
+  @Post("initiate")
+  async initiate(
+    @Headers("authorization") authorization: string,
+    @Headers("idempotency-key") idempotencyKey: string,
+    @Body() body: unknown,
+  ) {
+    const response = await fetch(
+      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/payments/initiate`,
+      {
+        method: "POST",
+        headers: {
+          authorization: authorization ?? "",
+          "idempotency-key": idempotencyKey ?? "",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+}
 @Module({
   controllers: [
     HealthController,
@@ -204,6 +300,10 @@ class ProtectedAuthProxyController {
     SessionProxyController,
     MeProxyController,
     ProtectedAuthProxyController,
+    StationsProxyController,
+    FareQuotesProxyController,
+    PurchasesProxyController,
+    PaymentsProxyController,
   ],
 })
 class AppModule {}
@@ -239,7 +339,7 @@ async function bootstrap() {
     origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
   });
   await app.listen(process.env.PORT ? Number(process.env.PORT) : 3001);
 }

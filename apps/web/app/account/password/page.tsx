@@ -2,6 +2,7 @@
 import { FormEvent, useState } from "react";
 import { Toast } from "../../toast";
 import { getAccessToken } from "../../auth-client";
+import { PasswordField } from "../../password-field";
 const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -75,40 +76,9 @@ export default function ChangePasswordPage() {
             Enter your current password and choose a new one.
           </p>
           <form onSubmit={submit}>
-            <label className="field">
-              Current password
-              <input
-                required
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </label>
-            <label className="field">
-              New password
-              <input
-                required
-                minLength={8}
-                maxLength={128}
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="field">
-              Confirm new password
-              <input
-                required
-                minLength={8}
-                maxLength={128}
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
+            <PasswordField label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+            <PasswordField label="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
+            <PasswordField label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
             <button className="primary" disabled={loading}>
               {loading ? "Updating…" : "Change password"}
             </button>

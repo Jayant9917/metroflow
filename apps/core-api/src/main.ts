@@ -9,6 +9,14 @@ import { AuthService } from "./auth/auth.service";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { RolesGuard } from "./auth/roles.guard";
 import { KafkaPublisher } from "./infrastructure/kafka.publisher";
+import { StationsController } from "./stations/stations.controller";
+import { StationsService } from "./stations/stations.service";
+import { FareQuotesController } from "./fare-quotes/fare-quotes.controller";
+import { FareQuotesService } from "./fare-quotes/fare-quotes.service";
+import { PurchasesController } from "./purchases/purchases.controller";
+import { PurchasesService } from "./purchases/purchases.service";
+import { PaymentsController } from "./payments/payments.controller";
+import { PaymentsService } from "./payments/payments.service";
 @Controller()
 class HealthController {
   @Get("health") health() {
@@ -16,8 +24,24 @@ class HealthController {
   }
 }
 @Module({
-  controllers: [HealthController, AuthController],
-  providers: [AuthService, JwtAuthGuard, RolesGuard, KafkaPublisher],
+  controllers: [
+    HealthController,
+    AuthController,
+    StationsController,
+    FareQuotesController,
+    PurchasesController,
+    PaymentsController,
+  ],
+  providers: [
+    AuthService,
+    JwtAuthGuard,
+    RolesGuard,
+    KafkaPublisher,
+    StationsService,
+    FareQuotesService,
+    PurchasesService,
+    PaymentsService,
+  ],
 })
 class AppModule {}
 async function bootstrap() {

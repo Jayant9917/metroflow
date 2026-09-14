@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
 import { Toast } from "../toast";
+import { PasswordField } from "../password-field";
 const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export default function ResetPasswordPage() {
   const [token, setToken] = useState("");
@@ -67,30 +68,8 @@ export default function ResetPasswordPage() {
             </>
           ) : (
             <form onSubmit={submit}>
-              <label className="field">
-                New password
-                <input
-                  required
-                  minLength={8}
-                  maxLength={128}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                />
-              </label>
-              <label className="field">
-                Confirm password
-                <input
-                  required
-                  minLength={8}
-                  maxLength={128}
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  autoComplete="new-password"
-                />
-              </label>
+              <PasswordField label="New password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
+              <PasswordField label="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} maxLength={128} />
               <button className="primary" disabled={loading}>
                 {loading ? "Updating…" : "Reset password"}
               </button>

@@ -1,6 +1,10 @@
 "use client";
 import { useState } from "react";
-import { clearAccessToken, getAccessToken } from "../auth-client";
+import {
+  clearAccessToken,
+  getAccessToken,
+  refreshAccessToken,
+} from "../auth-client";
 
 export default function AccountPage() {
   const [message, setMessage] = useState("");
@@ -10,13 +14,18 @@ export default function AccountPage() {
     setLoading(true);
     setError("");
     try {
-      const token = getAccessToken();
+      const token = getAccessToken() ?? (await refreshAccessToken());
+      if (!token) {
+        clearAccessToken();
+        window.location.assign("/login");
+        return;
+      }
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/logout`,
         {
           method: "POST",
           credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          headers: { Authorization: `Bearer ${token}` },
         },
       );
       if (!res.ok) {
