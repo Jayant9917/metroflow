@@ -36,6 +36,20 @@
       "when": 1789398885822,
       "tag": "0004_complex_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789399913843,
+      "tag": "0005_chief_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789400156193,
+      "tag": "0006_perpetual_silk_fever",
+      "breakpoints": true
     }
   ]
 }
