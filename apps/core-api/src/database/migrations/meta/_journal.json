@@ -29,6 +29,13 @@
       "when": 1789301673105,
       "tag": "0003_sweet_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789398885822,
+      "tag": "0004_complex_purple_man",
+      "breakpoints": true
     }
   ]
 }

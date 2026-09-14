@@ -1,11 +1,12 @@
 "use client";
-import { FormEvent, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { Toast } from "../toast";
 const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export default function ResetPasswordPage() {
-  const params = useSearchParams();
-  const [token, setToken] = useState(params.get("token") ?? "");
+  const [token, setToken] = useState("");
+  useEffect(() => {
+    setToken(new URLSearchParams(window.location.search).get("token") ?? "");
+  }, []);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -16,6 +17,10 @@ export default function ResetPasswordPage() {
     setError("");
     if (password !== confirm) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (!token) {
+      setError("This reset link is invalid or incomplete.");
       return;
     }
     setLoading(true);
@@ -62,14 +67,6 @@ export default function ResetPasswordPage() {
             </>
           ) : (
             <form onSubmit={submit}>
-              <label className="field">
-                Reset token
-                <input
-                  required
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
-              </label>
               <label className="field">
                 New password
                 <input

@@ -30,14 +30,6 @@ export class AuthController {
     res.header("set-cookie", result.cookie);
     return { accessToken: result.accessToken, user: result.user };
   }
-  @Post("email/resend") resendVerification(@Body("email") email: string) {
-    return this.auth.resendVerification(email);
-  }
-  @Post("email/verify") verifyEmail(
-    @Body() body: { email: string; code: string },
-  ) {
-    return this.auth.verifyEmail(body.email, body.code);
-  }
   @Post("password-reset/request") requestReset(@Body("email") email: string) {
     return this.auth.requestPasswordReset(email);
   }

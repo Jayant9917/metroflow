@@ -45,32 +45,6 @@ class AuthProxyController {
     if (!response.ok) throw new HttpException(data, response.status);
     return data;
   }
-  @Post("email/resend") async resendVerification(@Body() body: unknown) {
-    const response = await fetch(
-      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/auth/email/resend`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      },
-    );
-    const data = await response.json();
-    if (!response.ok) throw new HttpException(data, response.status);
-    return data;
-  }
-  @Post("email/verify") async verifyEmail(@Body() body: unknown) {
-    const response = await fetch(
-      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/auth/email/verify`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      },
-    );
-    const data = await response.json();
-    if (!response.ok) throw new HttpException(data, response.status);
-    return data;
-  }
   @Post("otp/request") async requestOtp(@Body() body: unknown) {
     const response = await fetch(
       `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/auth/otp/request`,
@@ -235,6 +209,32 @@ class ProtectedAuthProxyController {
 class AppModule {}
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use((request: any, response: any, next: () => void) => {
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("X-Frame-Options", "DENY");
+    response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (process.env.NODE_ENV === "production") {
+      response.setHeader(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains",
+      );
+      const origin = request.headers.origin;
+      const expected = process.env.WEB_ORIGIN;
+      if (
+        origin &&
+        expected &&
+        origin !== expected &&
+        ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
+      ) {
+        response.status(403).json({
+          code: "CSRF_ORIGIN_REJECTED",
+          message: "Request origin is not allowed.",
+        });
+        return;
+      }
+    }
+    next();
+  });
   app.enableCors({
     origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
     credentials: true,

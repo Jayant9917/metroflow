@@ -7,6 +7,7 @@ import {
   integer,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 export const userRole = pgEnum("user_role_type", [
   "PASSENGER",
@@ -107,5 +108,24 @@ export const passwordResetTokens = pgTable(
   (t) => ({
     tokenUnique: uniqueIndex("uq_password_reset_tokens_hash").on(t.tokenHash),
     userIndex: index("idx_password_reset_tokens_user_id").on(t.userId),
+  }),
+);
+
+export const authAuditLogs = pgTable(
+  "auth_audit_logs",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id").references(() => users.id),
+    action: text("action").notNull(),
+    outcome: text("outcome").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    userIndex: index("idx_auth_audit_logs_user_id").on(t.userId),
+    actionIndex: index("idx_auth_audit_logs_action").on(t.action),
+    createdIndex: index("idx_auth_audit_logs_created_at").on(t.createdAt),
   }),
 );

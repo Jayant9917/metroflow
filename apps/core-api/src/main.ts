@@ -8,6 +8,7 @@ import { AuthController } from "./auth/auth.controller";
 import { AuthService } from "./auth/auth.service";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { RolesGuard } from "./auth/roles.guard";
+import { KafkaPublisher } from "./infrastructure/kafka.publisher";
 @Controller()
 class HealthController {
   @Get("health") health() {
@@ -16,7 +17,7 @@ class HealthController {
 }
 @Module({
   controllers: [HealthController, AuthController],
-  providers: [AuthService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, JwtAuthGuard, RolesGuard, KafkaPublisher],
 })
 class AppModule {}
 async function bootstrap() {
