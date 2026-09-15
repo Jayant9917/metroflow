@@ -313,8 +313,12 @@ class TicketsProxyController {
 }
 @Controller("api/v1/gate")
 class GateProxyController {
-  @Get("entry-gates") async gates() { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/entry-gates`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
-  @Post("validate-entry") async entry(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { const response = await fetch(`${process.env.GATE_SERVICE_URL ?? "http://localhost:3005"}/api/v1/gate/validate-entry`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey ?? "", "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Get("entry-gates") async gates() { return this.listGates("entry-gates"); }
+  @Get("exit-gates") async exitGates() { return this.listGates("exit-gates"); }
+  private async listGates(path: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/${path}`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Post("validate-entry") async entry(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { return this.validate("validate-entry", idempotencyKey, body); }
+  @Post("validate-exit") async exit(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { return this.validate("validate-exit", idempotencyKey, body); }
+  private async validate(path: string, idempotencyKey: string, body: unknown) { const response = await fetch(`${process.env.GATE_SERVICE_URL ?? "http://localhost:3005"}/api/v1/gate/${path}`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey ?? "", "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
 }
 @Module({
   controllers: [
