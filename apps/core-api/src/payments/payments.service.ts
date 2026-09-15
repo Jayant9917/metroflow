@@ -2,10 +2,12 @@ import { ConflictException, HttpException, HttpStatus, Injectable } from "@nestj
 import { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 import { InitiatePaymentDto } from "./initiate-payment.dto";
+import { TicketsService } from "../tickets/tickets.service";
 
 @Injectable()
 export class PaymentsService {
   private readonly pool = new Pool({ connectionString: process.env.CORE_DATABASE_URL });
+  constructor(private readonly tickets: TicketsService) {}
 
   async initiate(userId: string, dto: InitiatePaymentDto, idempotencyKey: string) {
     if (!idempotencyKey) throw new HttpException({ code: "VALIDATION_ERROR", message: "Idempotency-Key is required." }, HttpStatus.BAD_REQUEST);
@@ -45,5 +47,27 @@ export class PaymentsService {
       },
       requestId: uuidv7(),
     };
+  }
+
+  async confirm(userId: string, dto: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) {
+    let response: Response;
+    try {
+      response = await fetch(`${process.env.PAYMENT_SERVICE_URL ?? "http://localhost:3003"}/internal/v1/payments/confirm`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-internal-service-key": process.env.INTERNAL_SERVICE_KEY ?? "", "x-user-id": userId },
+        body: JSON.stringify(dto),
+      });
+    } catch {
+      throw new HttpException({ code: "PAYMENT_SERVICE_UNAVAILABLE", message: "Payment service is temporarily unavailable." }, HttpStatus.BAD_GATEWAY);
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new HttpException(data, response.status);
+    const purchaseId = data.data?.purchaseId;
+    const owned = purchaseId && (await this.pool.query("SELECT id FROM purchases WHERE id = $1 AND user_id = $2", [purchaseId, userId])).rowCount;
+    if (!owned) throw new HttpException({ code: "PURCHASE_NOT_FOUND", message: "Purchase not found." }, HttpStatus.NOT_FOUND);
+    await this.pool.query("UPDATE purchases SET status = 'PAID', updated_at = NOW() WHERE id = $1 AND status IN ('CREATED', 'PAYMENT_PENDING')", [purchaseId]);
+    const ticket = await this.tickets.issueForPurchase(purchaseId, data.data.paymentId);
+    data.data.ticket = ticket;
+    return data;
   }
 }

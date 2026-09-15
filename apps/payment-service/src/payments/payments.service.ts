@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 import { InitiatePaymentDto } from "./initiate-payment.dto";
+import { ConfirmPaymentDto } from "./confirm-payment.dto";
 
 type PaymentResult = {
   paymentId: string;
@@ -28,6 +29,44 @@ export class PaymentsService {
     const actual = Buffer.from(signature, "utf8");
     const wanted = Buffer.from(expected, "utf8");
     return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+  }
+
+  private validCheckoutSignature(orderId: string, paymentId: string, signature: string) {
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret || !orderId || !paymentId || !signature) return false;
+    const expected = createHmac("sha256", secret).update(`${orderId}|${paymentId}`).digest("hex");
+    const actual = Buffer.from(signature, "utf8");
+    const wanted = Buffer.from(expected, "utf8");
+    return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+  }
+
+  async confirm(dto: ConfirmPaymentDto, userId: string) {
+    if (!this.validCheckoutSignature(dto.razorpayOrderId, dto.razorpayPaymentId, dto.razorpaySignature)) {
+      throw new UnauthorizedException({ code: "PAYMENT_SIGNATURE_INVALID", message: "Payment signature is invalid." });
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const attempt = (await client.query<{ id: string; payment_id: string; purchase_id: string; status: string }>(
+        "SELECT a.id, a.payment_id, p.purchase_id, a.status FROM payment_attempts a JOIN payments p ON p.id = a.payment_id WHERE a.razorpay_order_id = $1 AND p.user_id = $2 FOR UPDATE",
+        [dto.razorpayOrderId, userId],
+      )).rows[0];
+      if (!attempt) throw new ConflictException({ code: "PAYMENT_ATTEMPT_NOT_FOUND", message: "Payment attempt was not found." });
+      if (attempt.status === "SUCCESS") {
+        await client.query("COMMIT");
+        return { success: true, data: { status: "SUCCESS", alreadyConfirmed: true, paymentId: attempt.payment_id, purchaseId: attempt.purchase_id }, requestId: uuidv7() };
+      }
+      if (attempt.status !== "PENDING") throw new ConflictException({ code: "PAYMENT_ATTEMPT_NOT_PENDING", message: "This payment attempt cannot be confirmed." });
+      await client.query("UPDATE payment_attempts SET status = 'SUCCESS', razorpay_payment_id = $1, resolved_at = NOW() WHERE id = $2", [dto.razorpayPaymentId, attempt.id]);
+      await client.query("UPDATE payments SET status = 'SUCCESS', razorpay_payment_id = $1, razorpay_signature = $2, updated_at = NOW() WHERE id = $3", [dto.razorpayPaymentId, dto.razorpaySignature, attempt.payment_id]);
+      await client.query("COMMIT");
+      return { success: true, data: { status: "SUCCESS", paymentId: attempt.payment_id, purchaseId: attempt.purchase_id }, requestId: uuidv7() };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async handleWebhook(rawBody: Buffer, signature: string, providerEventId: string) {

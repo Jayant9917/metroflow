@@ -291,6 +291,22 @@ class PaymentsProxyController {
     if (!response.ok) throw new HttpException(data, response.status);
     return data;
   }
+
+  @Post("confirm")
+  async confirm(@Headers("authorization") authorization: string, @Body() body: unknown) {
+    const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/payments/confirm`, {
+      method: "POST", headers: { authorization: authorization ?? "", "content-type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+}
+@Controller("api/v1/tickets")
+class TicketsProxyController {
+  private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Get() list(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets", authorization); }
+  @Get(":ticketId") getTicket(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}`, authorization); }
 }
 @Module({
   controllers: [
@@ -304,6 +320,7 @@ class PaymentsProxyController {
     FareQuotesProxyController,
     PurchasesProxyController,
     PaymentsProxyController,
+    TicketsProxyController,
   ],
 })
 class AppModule {}
