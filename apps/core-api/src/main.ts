@@ -19,6 +19,8 @@ import { PaymentsController } from "./payments/payments.controller";
 import { PaymentsService } from "./payments/payments.service";
 import { TicketsController } from "./tickets/tickets.controller";
 import { TicketsService } from "./tickets/tickets.service";
+import { GateController } from "./gate/gate.controller";
+import { GateService } from "./gate/gate.service";
 @Controller()
 class HealthController {
   @Get("health") health() {
@@ -34,6 +36,7 @@ class HealthController {
     PurchasesController,
     PaymentsController,
     TicketsController,
+    GateController,
   ],
   providers: [
     AuthService,
@@ -45,6 +48,7 @@ class HealthController {
     PurchasesService,
     PaymentsService,
     TicketsService,
+    GateService,
   ],
 })
 class AppModule {}

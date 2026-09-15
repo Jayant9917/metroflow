@@ -1,4 +1,7 @@
 import "reflect-metadata";
+import { config } from "dotenv";
+import { resolve } from "node:path";
+config({ path: resolve(__dirname, "../../../.env") });
 import {
   Body,
   Controller,
@@ -308,6 +311,11 @@ class TicketsProxyController {
   @Get() list(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets", authorization); }
   @Get(":ticketId") getTicket(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}`, authorization); }
 }
+@Controller("api/v1/gate")
+class GateProxyController {
+  @Get("entry-gates") async gates() { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/entry-gates`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Post("validate-entry") async entry(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { const response = await fetch(`${process.env.GATE_SERVICE_URL ?? "http://localhost:3005"}/api/v1/gate/validate-entry`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey ?? "", "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+}
 @Module({
   controllers: [
     HealthController,
@@ -321,6 +329,7 @@ class TicketsProxyController {
     PurchasesProxyController,
     PaymentsProxyController,
     TicketsProxyController,
+    GateProxyController,
   ],
 })
 class AppModule {}
