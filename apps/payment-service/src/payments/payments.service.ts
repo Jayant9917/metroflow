@@ -56,7 +56,7 @@ export class PaymentsService {
         await client.query("COMMIT");
         return { success: true, data: { status: "SUCCESS", alreadyConfirmed: true, paymentId: attempt.payment_id, purchaseId: attempt.purchase_id }, requestId: uuidv7() };
       }
-      if (attempt.status !== "PENDING") throw new ConflictException({ code: "PAYMENT_ATTEMPT_NOT_PENDING", message: "This payment attempt cannot be confirmed." });
+      if (!["PENDING", "FAILED"].includes(attempt.status)) throw new ConflictException({ code: "PAYMENT_ATTEMPT_NOT_PENDING", message: "This payment attempt cannot be confirmed." });
       await client.query("UPDATE payment_attempts SET status = 'SUCCESS', razorpay_payment_id = $1, resolved_at = NOW() WHERE id = $2", [dto.razorpayPaymentId, attempt.id]);
       await client.query("UPDATE payments SET status = 'SUCCESS', razorpay_payment_id = $1, razorpay_signature = $2, updated_at = NOW() WHERE id = $3", [dto.razorpayPaymentId, dto.razorpaySignature, attempt.payment_id]);
       await client.query("COMMIT");
@@ -106,7 +106,7 @@ export class PaymentsService {
         const providerAmount = Number(entity?.amount);
         if (providerAmount !== this.paise(attempt.amount) || entity?.currency !== attempt.currency) {
           await client.query("UPDATE provider_events SET inconsistency_code = 'PAYMENT_AMOUNT_MISMATCH' WHERE id = $1", [inserted.id]);
-        } else if (attempt.status === "PENDING") {
+        } else if (["PENDING", "FAILED"].includes(attempt.status)) {
           await client.query("UPDATE payment_attempts SET status = 'SUCCESS', razorpay_payment_id = $1, resolved_at = NOW() WHERE id = $2", [razorpayPaymentId, attempt.id]);
           await client.query("UPDATE payments SET status = 'SUCCESS', razorpay_payment_id = $1, razorpay_signature = $2, updated_at = NOW() WHERE id = $3", [razorpayPaymentId, signature, attempt.payment_id]);
           await client.query(

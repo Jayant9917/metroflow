@@ -52,10 +52,12 @@ export default function PayPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [retryAvailable, setRetryAvailable] = useState(false);
 
   async function initiate() {
     setMessage("");
     setError(false);
+    setRetryAvailable(false);
     setLoading(true);
     try {
       const token = getAccessToken() ?? await refreshAccessToken();
@@ -75,6 +77,7 @@ export default function PayPage() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         setError(true);
+        setRetryAvailable(body.code === "PAYMENT_ATTEMPT_IN_PROGRESS" ? false : true);
         setMessage(body.message ?? body.error ?? `Payment initiation failed (${response.status}).`);
         return;
       }
@@ -104,7 +107,11 @@ export default function PayPage() {
           void confirmPayment(result);
         },
         modal: {
-          ondismiss: () => setMessage("Payment window closed. Your payment was not confirmed."),
+          ondismiss: () => {
+            setError(true);
+            setRetryAvailable(true);
+            setMessage("Payment window closed. You can start a new payment attempt.");
+          },
         },
         theme: { color: "#1769e0" },
       });
@@ -124,7 +131,7 @@ export default function PayPage() {
       body: JSON.stringify({ razorpayOrderId: result.razorpay_order_id, razorpayPaymentId: result.razorpay_payment_id, razorpaySignature: result.razorpay_signature }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) { setError(true); setMessage(body.message ?? "Payment confirmation failed. Please wait for webhook confirmation."); return; }
+    if (!response.ok) { setError(true); setRetryAvailable(body.code !== "PAYMENT_ATTEMPT_IN_PROGRESS"); setMessage(body.message ?? "Payment confirmation failed. You can retry the payment."); return; }
     setError(false);
     const ticketId = body.data?.ticket?.id;
     if (ticketId) window.location.assign(`/tickets/${ticketId}`);
@@ -140,9 +147,10 @@ export default function PayPage() {
           <h2>Purchase ready</h2>
           <p className="subtle">Purchase ID: {purchaseId}</p>
           {message && <div className={`feedback ${error ? "error" : "success"}`}>{message}</div>}
+          {retryAvailable && <p className="subtle payment-retry-note">A new attempt will use a new Razorpay order. Previous attempts remain recorded safely.</p>}
         </div>
         <button className="primary dashboard-cta" onClick={initiate} disabled={loading}>
-          {loading ? "Opening payment..." : "Open Razorpay Checkout"}
+          {loading ? "Opening payment..." : retryAvailable ? "Retry payment" : "Open Razorpay Checkout"}
         </button>
       </div>
     </AppShell>
