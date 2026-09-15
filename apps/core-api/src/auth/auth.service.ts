@@ -23,7 +23,8 @@ import { KafkaPublisher } from "../infrastructure/kafka.publisher";
 const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 const DUMMY_HASH =
-  "$2a$12$C6UzMDM.H6dfI/f/IKcEe.6JxQ8d0L3J8u8p4m3t1VYq5X8m2Z9W";
+  // Valid bcrypt hash used to keep unknown-user login timing comparable.
+  "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 @Injectable()
 export class AuthService {
@@ -372,8 +373,8 @@ export class AuthService {
     if (!limited)
       throw new HttpException(
         {
-        code: "PASSWORD_RESET_RATE_LIMITED",
-        message: "Please wait before requesting another reset email.",
+          code: "PASSWORD_RESET_RATE_LIMITED",
+          message: "Please wait before requesting another reset email.",
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );

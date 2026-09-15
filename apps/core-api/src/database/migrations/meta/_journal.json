@@ -50,6 +50,13 @@
       "when": 1789400156193,
       "tag": "0006_perpetual_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789497148885,
+      "tag": "0007_conscious_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

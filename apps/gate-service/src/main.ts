@@ -1,5 +1,76 @@
-import 'reflect-metadata'; import { config } from 'dotenv'; import { resolve } from 'node:path'; config({ path: resolve(__dirname, '../../../.env') }); import { Body, Controller, Get, Headers, HttpException, HttpStatus, Module, Post } from '@nestjs/common'; import { NestFactory } from '@nestjs/core';
-@Controller() class HealthController { @Get('health') health() { return { status: 'ok', service: 'gate-service' }; } }
-@Controller('api/v1/gate') class GateController { private auth(key: string, requestId: string) { if (!key || key !== process.env.GATE_API_KEY_SECRET) throw new HttpException({ code: 'UNAUTHORIZED', message: 'Invalid gate API key.' }, HttpStatus.UNAUTHORIZED); if (!requestId) throw new HttpException({ code: 'VALIDATION_ERROR', message: 'Idempotency-Key is required.' }, HttpStatus.BAD_REQUEST); } private async forward(path: string, requestId: string, body: unknown) { const response = await fetch(`${process.env.CORE_API_URL ?? 'http://localhost:3002'}${path}`, { method:'POST', headers:{'content-type':'application/json','idempotency-key':requestId}, body:JSON.stringify(body) }); const data=await response.json(); if(!response.ok) throw new HttpException(data,response.status); return data; } @Post('validate-entry') async entry(@Headers('x-gate-api-key') key: string, @Headers('idempotency-key') requestId: string, @Body() body: unknown) { this.auth(key, requestId); return this.forward('/internal/v1/gate/validate-entry', requestId, body); } @Post('validate-exit') async exit(@Headers('x-gate-api-key') key: string, @Headers('idempotency-key') requestId: string, @Body() body: unknown) { this.auth(key, requestId); return this.forward('/internal/v1/gate/validate-exit', requestId, body); } }
-@Module({ controllers: [HealthController, GateController] }) class AppModule {}
-async function bootstrap() { const app = await NestFactory.create(AppModule); await app.listen(process.env.PORT ? Number(process.env.PORT) : 3005); } bootstrap();
+import "reflect-metadata";
+import { config } from "dotenv";
+import { resolve } from "node:path";
+config({ path: resolve(__dirname, "../../../.env") });
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpException,
+  HttpStatus,
+  Module,
+  Post,
+} from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+@Controller()
+class HealthController {
+  @Get("health") health() {
+    return { status: "ok", service: "gate-service" };
+  }
+}
+@Controller("api/v1/gate")
+class GateController {
+  private auth(key: string, requestId: string) {
+    if (!key || key !== process.env.GATE_API_KEY_SECRET)
+      throw new HttpException(
+        { code: "UNAUTHORIZED", message: "Invalid gate API key." },
+        HttpStatus.UNAUTHORIZED,
+      );
+    if (!requestId)
+      throw new HttpException(
+        { code: "VALIDATION_ERROR", message: "Idempotency-Key is required." },
+        HttpStatus.BAD_REQUEST,
+      );
+  }
+  private async forward(path: string, requestId: string, body: unknown) {
+    const response = await fetch(
+      `${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": requestId,
+          "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new HttpException(data, response.status);
+    return data;
+  }
+  @Post("validate-entry") async entry(
+    @Headers("x-gate-api-key") key: string,
+    @Headers("idempotency-key") requestId: string,
+    @Body() body: unknown,
+  ) {
+    this.auth(key, requestId);
+    return this.forward("/internal/v1/gate/validate-entry", requestId, body);
+  }
+  @Post("validate-exit") async exit(
+    @Headers("x-gate-api-key") key: string,
+    @Headers("idempotency-key") requestId: string,
+    @Body() body: unknown,
+  ) {
+    this.auth(key, requestId);
+    return this.forward("/internal/v1/gate/validate-exit", requestId, body);
+  }
+}
+@Module({ controllers: [HealthController, GateController] })
+class AppModule {}
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(process.env.PORT ? Number(process.env.PORT) : 3005);
+}
+bootstrap();

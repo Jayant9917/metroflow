@@ -49,7 +49,8 @@ export default function GatePage() {
   async function validateEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setLoading(true); setMessage(""); setDecision("");
     try {
-      const response = await fetch(`${api}/api/v1/gate/validate-entry`, { method: "POST", credentials: "include", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({ gateId, ticketIdentifier }) });
+      const token = getAccessToken() ?? await refreshAccessToken();
+      const response = await fetch(`${api}/api/v1/gate/validate-entry`, { method: "POST", credentials: "include", headers: { authorization: `Bearer ${token ?? ""}`, "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({ gateId, ticketIdentifier }) });
       const payload = await readJson(response); if (!response.ok) throw new Error(payload.message ?? "Gate validation failed.");
       setDecision(payload.data.decision); setMessage(payload.data.decision === "ALLOW" ? "Entry allowed. Welcome aboard." : payload.data.message);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Gate validation failed."); }

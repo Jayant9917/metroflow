@@ -2,7 +2,152 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "../../app-shell";
 import { getAccessToken, refreshAccessToken } from "../../auth-client";
-type Station = { id: string; code: string; name: string };
+type Station = { id: string; code: string; name: string; lineOrder: number };
 const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-async function authFetch(path: string, init?: RequestInit) { let token = getAccessToken() ?? await refreshAccessToken(); return fetch(api + path, { ...init, headers: { ...(init?.headers ?? {}), authorization: `Bearer ${token ?? ""}`, "content-type": "application/json" }, credentials: "include" }); }
-export default function NewJourneyPage() { const [stations, setStations] = useState<Station[]>([]); const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [quote, setQuote] = useState<any>(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true); useEffect(() => { authFetch("/api/v1/stations").then(r => r.json()).then(d => setStations(d.data?.stations ?? [])).catch(() => setError("Unable to load stations.")).finally(() => setLoading(false)); }, []); async function getQuote(e: React.FormEvent) { e.preventDefault(); setError(""); setQuote(null); if (from === to) { setError("Choose two different stations."); return; } const r = await authFetch("/api/v1/fare-quotes", { method: "POST", body: JSON.stringify({ originStationId: from, destinationStationId: to }) }); const d = await r.json(); if (!r.ok) { setError(d.message ?? "Unable to calculate fare."); return; } setQuote(d.data.fareQuote); } async function purchase() { const r = await authFetch("/api/v1/purchases", { method: "POST", body: JSON.stringify({ fareQuoteId: quote.id }) }); const d = await r.json(); if (!r.ok) { setError(d.message ?? "Unable to create purchase."); return; } window.location.assign(`/journey/${d.data.purchase.id}/pay`); } return <AppShell eyebrow="New journey"><h1 className="page-title">Plan your journey</h1><p className="subtle page-description">Select your stations to receive an authoritative MetroFlow fare quote.</p><form className="journey-form dashboard-panel light-panel" onSubmit={getQuote}><label className="field" htmlFor="origin-station">From<select id="origin-station" name="originStationId" required value={from} onChange={e => setFrom(e.target.value)}><option value="">{loading ? "Loading stations..." : "Select origin"}</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="field" htmlFor="destination-station">To<select id="destination-station" name="destinationStationId" required value={to} onChange={e => setTo(e.target.value)}><option value="">Select destination</option>{stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>{error && <div className="feedback error">{error}</div>}<button className="primary">Get fare quote</button></form>{quote && <section className="dashboard-panel quote-panel"><div><div className="eyebrow">Fare quote</div><h2>{quote.originStation.name} to {quote.destinationStation.name}</h2><p className="subtle">Valid until {new Date(quote.expiresAt).toLocaleString()}</p></div><div><strong className="fare-amount">{quote.amount} {quote.currency}</strong><button className="primary dashboard-cta" onClick={purchase}>Confirm journey</button></div></section>}</AppShell>; }
+async function authFetch(path: string, init?: RequestInit) {
+  let token = getAccessToken() ?? (await refreshAccessToken());
+  return fetch(api + path, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      authorization: `Bearer ${token ?? ""}`,
+      "content-type": "application/json",
+    },
+    credentials: "include",
+  });
+}
+export default function NewJourneyPage() {
+  const [stations, setStations] = useState<Station[]>([]);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [quote, setQuote] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    authFetch("/api/v1/stations")
+      .then((r) => r.json())
+      .then((d) => setStations(d.data?.stations ?? []))
+      .catch(() => setError("Unable to load stations."))
+      .finally(() => setLoading(false));
+  }, []);
+  async function getQuote(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setQuote(null);
+    if (from === to) {
+      setError("Choose two different stations.");
+      return;
+    }
+    const r = await authFetch("/api/v1/fare-quotes", {
+      method: "POST",
+      body: JSON.stringify({ originStationId: from, destinationStationId: to }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      setError(d.message ?? "Unable to calculate fare.");
+      return;
+    }
+    setQuote(d.data.fareQuote);
+  }
+  async function purchase() {
+    const r = await authFetch("/api/v1/purchases", {
+      method: "POST",
+      body: JSON.stringify({ fareQuoteId: quote.id }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      setError(d.message ?? "Unable to create purchase.");
+      return;
+    }
+    window.location.assign(`/journey/${d.data.purchase.id}/pay`);
+  }
+  return (
+    <AppShell eyebrow="New journey">
+      <h1 className="page-title">Plan your journey</h1>
+      <p className="subtle page-description">
+        Select your stations to receive an ordered demo route.
+      </p>
+      <section
+        className="station-map-preview"
+        aria-label="MetroFlow demonstration route"
+      >
+        <div className="station-map-title">
+          <span className="eyebrow">DEMO LINE MAP</span>
+          <span>{stations.length} stations · intermediate stops are shown</span>
+        </div>
+        <div className="station-map-line">
+          {stations.map((s, index) => (
+            <span key={s.id} className="station-map-stop">
+              <i>{index + 1}</i>
+              {s.name}
+            </span>
+          ))}
+        </div>
+      </section>
+      <form
+        className="journey-form dashboard-panel light-panel"
+        onSubmit={getQuote}
+      >
+        <label className="field" htmlFor="origin-station">
+          From
+          <select
+            id="origin-station"
+            name="originStationId"
+            required
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          >
+            <option value="">
+              {loading ? "Loading stations..." : "Select origin"}
+            </option>
+            {stations.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field" htmlFor="destination-station">
+          To
+          <select
+            id="destination-station"
+            name="destinationStationId"
+            required
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          >
+            <option value="">Select destination</option>
+            {stations.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error && <div className="feedback error">{error}</div>}
+        <button className="primary">Get fare quote</button>
+      </form>
+      {quote && (
+        <section className="dashboard-panel quote-panel">
+          <div>
+            <div className="eyebrow">Fare quote</div>
+            <h2>
+              {quote.originStation.name} to {quote.destinationStation.name}
+            </h2>
+            <p className="subtle">
+              Valid until {new Date(quote.expiresAt).toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <strong className="fare-amount">
+              {quote.amount} {quote.currency}
+            </strong>
+            <button className="primary dashboard-cta" onClick={purchase}>
+              Confirm journey
+            </button>
+          </div>
+        </section>
+      )}
+    </AppShell>
+  );
+}

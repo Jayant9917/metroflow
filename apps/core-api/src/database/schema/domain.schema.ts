@@ -64,6 +64,7 @@ export const stations = pgTable(
     id: uuid("id").primaryKey(),
     code: text("code").notNull(),
     name: text("name").notNull(),
+    lineOrder: integer("line_order").notNull(),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -74,6 +75,7 @@ export const stations = pgTable(
   },
   (t) => ({
     codeUnique: uniqueIndex("uq_stations_code").on(t.code),
+    lineOrderUnique: uniqueIndex("uq_stations_line_order").on(t.lineOrder),
   }),
 );
 

@@ -9,7 +9,7 @@ export class StationsService {
 
   async listActive() {
     const result = await this.pool.query(
-      "SELECT id, code, name FROM stations WHERE is_active = TRUE ORDER BY name ASC",
+      'SELECT id, code, name, line_order AS "lineOrder" FROM stations WHERE is_active = TRUE ORDER BY line_order ASC',
     );
     return result.rows;
   }

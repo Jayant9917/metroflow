@@ -6,5 +6,6 @@ dist
 !.env.example
 coverage
 .turbo
+.cache
 *.tsbuildinfo
 implemented on date/

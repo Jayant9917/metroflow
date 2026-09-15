@@ -9,7 +9,15 @@ export function clearAccessToken() {
   accessToken = null;
 }
 
-export async function refreshAccessToken() {
+let refreshInFlight: Promise<string | null> | null = null;
+export function refreshAccessToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = refresh().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
+async function refresh() {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/refresh`,
     {

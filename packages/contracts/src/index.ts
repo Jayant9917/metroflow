@@ -1,2 +1,11 @@
 export const PAYMENT_SUCCEEDED_TOPIC = 'payment.succeeded' as const;
 export type EventEnvelope<T> = { version: 1; eventId: string; occurredAt: string; payload: T };
+export type TicketStatus = 'ISSUED' | 'IN_JOURNEY' | 'COMPLETED' | 'EXPIRED';
+export type JourneyStatus = 'ACTIVE' | 'COMPLETED' | 'TIMED_OUT';
+export type GateType = 'ENTRY' | 'EXIT';
+export type GateStatus = 'ACTIVE' | 'INACTIVE';
+export type StationRef = { id: string; code: string; name: string };
+export type GateRef = { id: string; code: string; type: GateType; status: GateStatus };
+export type RouteStation = StationRef & { lineOrder: number; gates: GateRef[] };
+export type TicketRoute = { origin: StationRef; destination: StationRef; stations: RouteStation[] };
+export type Journey = { id: string; ticketId: string; status: JourneyStatus; entryStation: StationRef; actualExitStation: StationRef | null; entryGateId: string; exitGateId: string | null; enteredAt: string; expiresAt: string; exitedAt: string | null; timedOutAt: string | null };

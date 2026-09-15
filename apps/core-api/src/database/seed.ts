@@ -43,6 +43,50 @@ const stations = [
   { code: "GREEN_PARK", name: "Green Park" },
 ];
 
+// Deliberately simplified demonstration route. It is an ordered single-line
+// map for the simulator, not an authoritative Delhi Metro network map.
+const demoRouteOrder = [
+  "RAJIV_CHOWK",
+  "KASHMERE_GATE",
+  "CHANDNI_CHOWK",
+  "CIVIL_LINES",
+  "VISHWAVIDYALAYA",
+  "VIDHAN_SABHA",
+  "MODEL_TOWN",
+  "AZADPUR",
+  "HAUZ_KHAS",
+  "SAKET",
+  "GREEN_PARK",
+  "AIIMS",
+  "DHAULA_KUAN",
+  "ADARSH_NAGAR",
+  "JAHANGIRPURI",
+  "SHALIMAR_BAGH",
+  "NETAJI_SUBHASH_PLACE",
+  "KOHAT_ENCLAVE",
+  "PITAMPURA",
+  "ROHINI_EAST",
+  "ROHINI_WEST",
+  "RITHALA",
+  "KAROL_BAGH",
+  "JHANDEWALAN",
+  "RAJENDRA_PLACE",
+  "PATEL_NAGAR",
+  "SHADIPUR",
+  "MOTI_NAGAR",
+  "RAMESH_NAGAR",
+  "RAJOURI_GARDEN",
+  "TAGORE_GARDEN",
+  "SUBHASH_NAGAR",
+  "TILAK_NAGAR",
+  "JANAKPURI_WEST",
+  "DABRI_MOR",
+];
+const routeRank = new Map(demoRouteOrder.map((code, index) => [code, index]));
+stations.sort(
+  (a, b) => (routeRank.get(a.code) ?? 999) - (routeRank.get(b.code) ?? 999),
+);
+
 // Development-only fare model. The real production fare matrix should be
 // imported or managed through an admin workflow, then stored in fare_rules.
 // This keeps local setup scalable when the station list grows to 90+ stations.
@@ -62,15 +106,17 @@ async function main() {
 
   try {
     await client.query("BEGIN");
+    // Free the unique order slots before applying a changed demo ordering.
+    await client.query("UPDATE stations SET line_order = line_order + 1000");
     const stationIds = new Map<string, string>();
 
-    for (const station of stations) {
+    for (const [stationIndex, station] of stations.entries()) {
       const result = await client.query(
-        `INSERT INTO stations (id, code, name)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()
+        `INSERT INTO stations (id, code, name, line_order)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, line_order = EXCLUDED.line_order, updated_at = NOW()
          RETURNING id`,
-        [uuidv7(), station.code, station.name],
+        [uuidv7(), station.code, station.name, stationIndex + 1],
       );
       stationIds.set(station.code, result.rows[0].id);
 
@@ -92,7 +138,8 @@ async function main() {
         if (originIndex === destinationIndex) continue;
         const originId = stationIds.get(stations[originIndex].code);
         const destinationId = stationIds.get(stations[destinationIndex].code);
-        if (!originId || !destinationId) throw new Error("Seed station missing");
+        if (!originId || !destinationId)
+          throw new Error("Seed station missing");
 
         await client.query(
           `INSERT INTO fare_rules

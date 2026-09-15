@@ -12,6 +12,7 @@ import {
   Module,
   Param,
   Post,
+  Query,
   Res,
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
@@ -309,15 +310,29 @@ class PaymentsProxyController {
 class TicketsProxyController {
   private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Get() list(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets", authorization); }
+  @Get(":ticketId/route") route(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}/route`, authorization); }
   @Get(":ticketId") getTicket(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}`, authorization); }
+}
+@Controller("api/v1/journeys")
+class JourneysProxyController {
+  private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Get() list(@Headers("authorization") authorization: string, @Query("ticketId") ticketId?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (ticketId) query.set("ticketId", ticketId); if (status) query.set("status", status); const suffix = query.size ? `?${query.toString()}` : ""; return this.get(`/api/v1/journeys${suffix}`, authorization); }
+  @Get(":journeyId") journey(@Headers("authorization") authorization: string, @Param("journeyId") id: string) { return this.get(`/api/v1/journeys/${id}`, authorization); }
 }
 @Controller("api/v1/gate")
 class GateProxyController {
   @Get("entry-gates") async gates() { return this.listGates("entry-gates"); }
   @Get("exit-gates") async exitGates() { return this.listGates("exit-gates"); }
   private async listGates(path: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/${path}`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
-  @Post("validate-entry") async entry(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { return this.validate("validate-entry", idempotencyKey, body); }
-  @Post("validate-exit") async exit(@Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { return this.validate("validate-exit", idempotencyKey, body); }
+  @Post("validate-entry") async entry(@Headers("authorization") authorization: string, @Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { await this.assertOwner(authorization, body); return this.validate("validate-entry", idempotencyKey, body); }
+  @Post("validate-exit") async exit(@Headers("authorization") authorization: string, @Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { await this.assertOwner(authorization, body); return this.validate("validate-exit", idempotencyKey, body); }
+  private async assertOwner(authorization: string, body: unknown) {
+    if (!authorization) throw new HttpException({ code: "UNAUTHORIZED", message: "Please sign in before scanning your ticket." }, 401);
+    const id = (body as { ticketIdentifier?: unknown } | null)?.ticketIdentifier;
+    if (typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new HttpException({ code: "VALIDATION_ERROR", message: "A valid ticket identifier is required." }, 400);
+    const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/tickets/${id}`, { headers: { authorization }, signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new HttpException(await response.json(), response.status);
+  }
   private async validate(path: string, idempotencyKey: string, body: unknown) { const response = await fetch(`${process.env.GATE_SERVICE_URL ?? "http://localhost:3005"}/api/v1/gate/${path}`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey ?? "", "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
 }
 @Module({
@@ -333,6 +348,7 @@ class GateProxyController {
     PurchasesProxyController,
     PaymentsProxyController,
     TicketsProxyController,
+    JourneysProxyController,
     GateProxyController,
   ],
 })
