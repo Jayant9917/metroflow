@@ -1,5 +1,6 @@
 import { IsUUID } from "class-validator";
-export class GateValidationDto {
+import type { GateValidationRequest } from "@metroflow/contracts";
+export class GateValidationDto implements GateValidationRequest {
   @IsUUID() gateId!: string;
   @IsUUID() ticketIdentifier!: string;
 }

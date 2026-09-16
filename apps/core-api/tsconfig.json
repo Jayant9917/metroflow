@@ -1,1 +1,1 @@
-{"extends":"../../tsconfig.json","compilerOptions":{"experimentalDecorators":true,"emitDecoratorMetadata":true,"rootDir":"src","outDir":"dist"},"include":["src"]}
+{"extends":"../../tsconfig.json","compilerOptions":{"baseUrl":".","paths":{"@metroflow/contracts":["../../packages/contracts/dist/index.d.ts"]},"experimentalDecorators":true,"emitDecoratorMetadata":true,"rootDir":"src","outDir":"dist"},"include":["src"]}

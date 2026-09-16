@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import type { GateRef, Journey as ContractJourney, RouteStation, Ticket } from "@metroflow/contracts";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "../../../app-shell";
 import { getAccessToken, refreshAccessToken } from "../../../auth-client";
@@ -18,34 +19,9 @@ type SimulatorState =
   | "EXITING"
   | "JOURNEY_COMPLETED"
   | "ERROR";
-type Gate = {
-  id: string;
-  code: string;
-  type: "ENTRY" | "EXIT";
-  status: "ACTIVE" | "INACTIVE";
-};
-type Station = {
-  id: string;
-  code: string;
-  name: string;
-  lineOrder: number;
-  gates: Gate[];
-};
-type Ticket = {
-  id: string;
-  identifier: string;
-  status: string;
-  paidAmount: string;
-  currency: string;
-  expiresAt: string;
-  originStation: { id: string; name: string };
-  destinationStation: { id: string; name: string };
-};
-type Journey = {
-  id: string;
-  status: string;
-  enteredAt: string;
-  expiresAt: string;
+type Station = RouteStation;
+type Gate = GateRef;
+type Journey = Pick<ContractJourney, "id" | "status" | "enteredAt" | "expiresAt"> & {
   exitedAt?: string;
   actualExitStation?: { id: string; name: string } | null;
 };

@@ -302,6 +302,7 @@ export const gateEvents = pgTable(
     ticketId: uuid("ticket_id"),
     eventType: gateEventType("event_type").notNull(),
     rejectionReason: gateRejectionReason("rejection_reason"),
+    responsePayload: jsonb("response_payload"),
     requestId: text("request_id"),
     occurredAt: timestamp("occurred_at", { withTimezone: true })
       .notNull()

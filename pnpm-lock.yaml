@@ -60,6 +60,9 @@ importers:
 
   apps/core-api:
     dependencies:
+      '@metroflow/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -210,6 +213,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@metroflow/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       next:
         specifier: ^15.0.0
         version: 15.5.25(@playwright/test@1.63.0)(@types/node@22.20.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

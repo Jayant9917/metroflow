@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
+import type { GateValidationRequest } from "@metroflow/contracts";
 
 @Injectable()
 export class GateService {
@@ -9,7 +10,7 @@ export class GateService {
   });
   private async replay(
     client: PoolClient,
-    dto: { gateId: string; ticketIdentifier: string },
+    dto: GateValidationRequest,
     requestId: string,
     kind: "ENTRY" | "EXIT",
   ) {
@@ -48,12 +49,10 @@ export class GateService {
         },
         409,
       );
+    if (event.response_payload)
+      return { ...event.response_payload, requestId };
     if (event.rejection_reason)
-      return {
-        success: true,
-        data: { decision: "REJECT", rejectionCode: event.rejection_reason },
-        requestId,
-      };
+      return { success: true, data: { decision: "REJECT", rejectionCode: event.rejection_reason }, requestId };
     const journey = (
       await client.query(
         "SELECT id, entered_at, expires_at, exited_at FROM journeys WHERE ticket_id=$1",
@@ -79,7 +78,7 @@ export class GateService {
     return { success: true, data: { gates: rows }, requestId: uuidv7() };
   }
   async validateEntry(
-    dto: { gateId: string; ticketIdentifier: string },
+    dto: GateValidationRequest,
     requestId: string,
   ) {
     const client = await this.pool.connect();
@@ -117,7 +116,7 @@ export class GateService {
       if (rejection) {
         if (gate)
           await client.query(
-            `INSERT INTO gate_events (id, gate_id, station_id, ticket_id, event_type, rejection_reason, request_id) VALUES ($1,$2,$3,$4,'ENTRY_REJECTED',$5,$6) ON CONFLICT (request_id) DO NOTHING`,
+            `INSERT INTO gate_events (id, gate_id, station_id, ticket_id, event_type, rejection_reason, request_id, response_payload) VALUES ($1,$2,$3,$4,'ENTRY_REJECTED',$5,$6,$7) ON CONFLICT (request_id) DO NOTHING`,
             [
               uuidv7(),
               gate.gate_id,
@@ -125,10 +124,11 @@ export class GateService {
               ticket?.id ?? null,
               rejection,
               requestId,
+              JSON.stringify({ success: true, data: { decision: "REJECT", rejectionCode: rejection, message: `Entry rejected: ${rejection.replaceAll("_", " ").toLowerCase()}.` } }),
             ],
           );
         await client.query("COMMIT");
-        return {
+        const response = {
           success: true,
           data: {
             decision: "REJECT",
@@ -137,6 +137,8 @@ export class GateService {
           },
           requestId: uuidv7(),
         };
+        await client.query("UPDATE gate_events SET response_payload=$1 WHERE request_id=$2", [JSON.stringify(response), requestId]);
+        return response;
       }
       const journey = (
         await client.query(
@@ -248,7 +250,7 @@ export class GateService {
       if (rejection) {
         if (gate)
           await client.query(
-            `INSERT INTO gate_events (id,gate_id,station_id,ticket_id,event_type,rejection_reason,request_id) VALUES ($1,$2,$3,$4,'EXIT_REJECTED',$5,$6) ON CONFLICT (request_id) DO NOTHING`,
+            `INSERT INTO gate_events (id,gate_id,station_id,ticket_id,event_type,rejection_reason,request_id,response_payload) VALUES ($1,$2,$3,$4,'EXIT_REJECTED',$5,$6,$7) ON CONFLICT (request_id) DO NOTHING`,
             [
               uuidv7(),
               gate.gate_id,
@@ -256,6 +258,7 @@ export class GateService {
               ticket?.id ?? null,
               rejection,
               requestId,
+              JSON.stringify({ success: true, data: { decision: "REJECT", rejectionCode: rejection, message: `Exit rejected: ${rejection.replaceAll("_", " ").toLowerCase()}.` } }),
             ],
           );
         await client.query("COMMIT");
@@ -279,20 +282,13 @@ export class GateService {
         "UPDATE tickets SET status='COMPLETED', updated_at=NOW() WHERE id=$1",
         [ticket.id],
       );
+      const response = { success: true, data: { decision: "ALLOW", message: "Exit allowed. Journey completed.", journey: completed }, requestId: uuidv7() };
       await client.query(
-        `INSERT INTO gate_events (id,gate_id,station_id,ticket_id,event_type,request_id) VALUES ($1,$2,$3,$4,'EXIT_ACCEPTED',$5)`,
-        [uuidv7(), gate.gate_id, gate.station_id, ticket.id, requestId],
+        `INSERT INTO gate_events (id,gate_id,station_id,ticket_id,event_type,request_id,response_payload) VALUES ($1,$2,$3,$4,'EXIT_ACCEPTED',$5,$6)`,
+        [uuidv7(), gate.gate_id, gate.station_id, ticket.id, requestId, JSON.stringify(response)],
       );
       await client.query("COMMIT");
-      return {
-        success: true,
-        data: {
-          decision: "ALLOW",
-          message: "Exit allowed. Journey completed.",
-          journey: completed,
-        },
-        requestId: uuidv7(),
-      };
+      return response;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
