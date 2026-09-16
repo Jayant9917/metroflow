@@ -76,6 +76,10 @@ export class JourneysService {
       requestId: uuidv7(),
     };
   }
+  async listForOperations() {
+    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email")} JOIN users u ON u.id=j.user_id ORDER BY j.created_at DESC LIMIT 200`)).rows;
+    return rows.map((row) => ({ ...this.shape(row), email: row.email }));
+  }
   private async expireOverdue(userId: string) {
     await this.pool.query(
       `UPDATE journeys SET status='TIMED_OUT', timed_out_at=COALESCE(timed_out_at,NOW()), updated_at=NOW() WHERE user_id=$1 AND status='ACTIVE' AND expires_at <= NOW()`,

@@ -53,7 +53,7 @@ export default function LoginPage() {
         return;
       }
       setAccessToken(data.accessToken);
-      router.push("/dashboard");
+      router.push(["ADMIN", "OPERATOR"].includes(data.user?.role) ? "/admin" : "/dashboard");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Service temporarily unavailable.",

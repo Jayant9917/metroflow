@@ -9,6 +9,8 @@ import {
 } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { CurrentUser } from "../auth/auth.decorators";
+import { Roles } from "../auth/auth.decorators";
+import { RolesGuard } from "../auth/roles.guard";
 import { AuthUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { JourneysService } from "./journeys.service";
@@ -17,6 +19,8 @@ import { JourneysService } from "./journeys.service";
 @UseGuards(JwtAuthGuard)
 export class JourneysController {
   constructor(private readonly journeys: JourneysService) {}
+  @Get("operations") @UseGuards(RolesGuard) @Roles("ADMIN", "OPERATOR")
+  operations() { return this.journeys.listForOperations().then((journeys) => ({ success: true, data: { journeys } })); }
   @Get() list(
     @CurrentUser() user: AuthUser,
     @Query("ticketId") ticketId?: string,

@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { resolve } from "node:path";
 import { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+import { hash } from "bcryptjs";
 
 config({ path: resolve(__dirname, "../../../../.env") });
 
@@ -106,6 +107,19 @@ async function main() {
 
   try {
     await client.query("BEGIN");
+    const staff = [
+      { email: process.env.METROFLOW_ADMIN_EMAIL ?? "admin@metroflow.dev", role: "ADMIN", password: process.env.METROFLOW_ADMIN_PASSWORD ?? "MetroFlow-Admin-123!" },
+      { email: process.env.METROFLOW_OPERATOR_EMAIL ?? "operator@metroflow.dev", role: "OPERATOR", password: process.env.METROFLOW_OPERATOR_PASSWORD ?? "MetroFlow-Operator-123!" },
+    ];
+    for (const account of staff) {
+      const passwordHash = await hash(account.password, 12);
+      await client.query(
+        `INSERT INTO users (id, email, password_hash, role, email_verified_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role, password_hash = EXCLUDED.password_hash, email_verified_at = COALESCE(users.email_verified_at, NOW()), updated_at = NOW()`,
+        [uuidv7(), account.email, passwordHash, account.role],
+      );
+    }
     // Free the unique order slots before applying a changed demo ordering.
     await client.query("UPDATE stations SET line_order = line_order + 1000");
     const stationIds = new Map<string, string>();
@@ -164,7 +178,7 @@ async function main() {
 
     await client.query("COMMIT");
     console.log(
-      `Seeded ${stations.length} stations and ${fareCount} generated directional fare rules.`,
+      `Seeded ${stations.length} stations, ${fareCount} generated directional fare rules, and ${staff.length} development staff accounts.`,
     );
   } catch (error) {
     await client.query("ROLLBACK");

@@ -165,4 +165,8 @@ export class PurchasesService {
       requestId: uuidv7(),
     };
   }
+  async listForOperations() {
+    const rows = (await this.pool.query(`SELECT p.id, u.email, origin.id origin_id, origin.code origin_code, origin.name origin_name, destination.id destination_id, destination.code destination_code, destination.name destination_name, p.amount, p.currency, p.status, p.created_at FROM purchases p JOIN users u ON u.id=p.user_id JOIN stations origin ON origin.id=p.origin_station_id JOIN stations destination ON destination.id=p.destination_station_id ORDER BY p.created_at DESC LIMIT 200`)).rows;
+    return rows.map((row) => ({ ...this.toPurchase(row), email: row.email }));
+  }
 }

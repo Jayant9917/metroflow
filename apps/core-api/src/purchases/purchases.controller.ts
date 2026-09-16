@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/auth.decorators";
+import { Roles } from "../auth/auth.decorators";
+import { RolesGuard } from "../auth/roles.guard";
 import { AuthUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreatePurchaseDto } from "./create-purchase.dto";
@@ -9,6 +11,8 @@ import { PurchasesService } from "./purchases.service";
 @UseGuards(JwtAuthGuard)
 export class PurchasesController {
   constructor(private readonly purchases: PurchasesService) {}
+  @Get("operations") @UseGuards(RolesGuard) @Roles("ADMIN", "OPERATOR")
+  operations() { return this.purchases.listForOperations().then((purchases) => ({ success: true, data: { purchases } })); }
 
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePurchaseDto) {

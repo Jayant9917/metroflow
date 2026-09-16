@@ -1,9 +1,12 @@
 "use client";
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 export function AppShell({ children, eyebrow = "MetroFlow" }: { children: ReactNode; eyebrow?: string }) {
-  return <main className="dashboard"><header className="dashboard-nav"><a className="brand brand-lockup" href="/dashboard"><img src="/metro.png" alt="" aria-hidden="true" />MetroFlow</a><nav><a href="/journey/new">Plan journey</a><a href="/purchases">Purchases</a><a href="/tickets">Tickets</a><a href="/journeys">Journeys</a><a href="/account">Account</a></nav></header><section className="dashboard-content"><div className="eyebrow">{eyebrow}</div>{children}</section></main>;
+  const pathname = usePathname();
+  const operations = pathname.startsWith("/admin");
+  return <main className="dashboard"><header className="dashboard-nav"><a className="brand brand-lockup" href={operations ? "/admin" : "/dashboard"}><img src="/metro.png" alt="" aria-hidden="true" />MetroFlow</a><nav>{operations ? <a href="/admin">Operations</a> : <><a href="/journey/new">Plan journey</a><a href="/purchases">Purchases</a><a href="/tickets">Tickets</a><a href="/journeys">Journeys</a><a href="/account">Account</a></>}</nav></header><section className="dashboard-content"><div className="eyebrow">{eyebrow}</div>{children}</section></main>;
 }
 
 export function FeaturePage({ title, description, links = [], eyebrow = "MetroFlow" }: { title: string; description: string; links?: { label: string; href: string }[]; eyebrow?: string }) {

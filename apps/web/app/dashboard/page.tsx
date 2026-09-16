@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   clearAccessToken,
   getAccessToken,
@@ -10,6 +10,19 @@ import { Toast } from "../toast";
 export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    void (async () => {
+      const token = getAccessToken() ?? (await refreshAccessToken());
+      if (!token) return;
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/me`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const body = await response.json();
+      if (["ADMIN", "OPERATOR"].includes(body.user?.role)) window.location.replace("/admin");
+    })().catch(() => undefined);
+  }, []);
   async function logout() {
     setLoading(true);
     setError("");

@@ -114,6 +114,10 @@ export class TicketsService {
       requestId: uuidv7(),
     };
   }
+  async listForOperations() {
+    const rows = (await this.pool.query(`SELECT t.*, u.email, o.code origin_code, o.name origin_name, d.code destination_code, d.name destination_name FROM tickets t JOIN users u ON u.id=t.user_id JOIN stations o ON o.id=t.origin_station_id JOIN stations d ON d.id=t.destination_station_id ORDER BY t.created_at DESC LIMIT 200`)).rows;
+    return rows.map((row) => ({ ...this.shape({ ...row, origin_id: row.origin_station_id, destination_id: row.destination_station_id }), email: row.email }));
+  }
   async get(userId: string, id: string) {
     const row = (
       await this.pool.query(

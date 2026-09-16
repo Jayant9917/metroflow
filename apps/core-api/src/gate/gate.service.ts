@@ -77,6 +77,10 @@ export class GateService {
     ).rows;
     return { success: true, data: { gates: rows }, requestId: uuidv7() };
   }
+  async listEventsForOperations() {
+    const rows = (await this.pool.query(`SELECT e.id, e.event_type, e.rejection_reason, e.request_id, e.occurred_at, g.code gate_code, s.name station_name, t.id ticket_id FROM gate_events e JOIN gates g ON g.id=e.gate_id JOIN stations s ON s.id=e.station_id LEFT JOIN tickets t ON t.id=e.ticket_id ORDER BY e.occurred_at DESC LIMIT 200`)).rows;
+    return rows;
+  }
   async validateEntry(
     dto: GateValidationRequest,
     requestId: string,

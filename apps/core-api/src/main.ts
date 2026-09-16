@@ -23,6 +23,10 @@ import { GateController } from "./gate/gate.controller";
 import { GateService } from "./gate/gate.service";
 import { JourneysController } from "./journeys/journeys.controller";
 import { JourneysService } from "./journeys/journeys.service";
+import { AdminController } from "./admin/admin.controller";
+import { AdminOutboxService } from "./admin/outbox.service";
+import { AdminInconsistenciesService } from "./admin/inconsistencies.service";
+import { AdminAnalyticsService } from "./admin/analytics.service";
 @Controller()
 class HealthController {
   @Get("health") health() {
@@ -40,6 +44,7 @@ class HealthController {
     TicketsController,
     GateController,
     JourneysController,
+    AdminController,
   ],
   providers: [
     AuthService,
@@ -53,6 +58,9 @@ class HealthController {
     TicketsService,
     GateService,
     JourneysService,
+    AdminOutboxService,
+    AdminInconsistenciesService,
+    AdminAnalyticsService,
   ],
 })
 class AppModule {}

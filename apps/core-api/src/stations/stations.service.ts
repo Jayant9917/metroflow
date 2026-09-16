@@ -13,4 +13,14 @@ export class StationsService {
     );
     return result.rows;
   }
+
+  async listForOperations() {
+    const result = await this.pool.query(`
+      SELECT s.id, s.code, s.name, s.line_order AS "lineOrder", s.is_active AS "isActive",
+        COALESCE(json_agg(json_build_object('id', g.id, 'code', g.code, 'type', g.type, 'status', g.status) ORDER BY g.type, g.code) FILTER (WHERE g.id IS NOT NULL), '[]') AS gates
+      FROM stations s LEFT JOIN gates g ON g.station_id = s.id
+      GROUP BY s.id ORDER BY s.line_order ASC
+    `);
+    return result.rows;
+  }
 }

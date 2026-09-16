@@ -203,12 +203,16 @@ class ProtectedAuthProxyController {
 }
 @Controller("api/v1/stations")
 class StationsProxyController {
+  @Get("operations")
+  async operations(@Headers("authorization") authorization: string) {
+    return this.forward("/api/v1/stations/operations", authorization);
+  }
   @Get()
   async list(@Headers("authorization") authorization: string) {
-    const response = await fetch(
-      `${process.env.CORE_API_URL ?? "http://localhost:3002"}/api/v1/stations`,
-      { headers: { authorization: authorization ?? "" } },
-    );
+    return this.forward("/api/v1/stations", authorization);
+  }
+  private async forward(path: string, authorization: string) {
+    const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } });
     const data = await response.json();
     if (!response.ok) throw new HttpException(data, response.status);
     return data;
@@ -260,6 +264,8 @@ class PurchasesProxyController {
   create(@Headers("authorization") authorization: string, @Body() body: unknown) {
     return this.forward("/api/v1/purchases", "POST", authorization, body);
   }
+  @Get("operations")
+  operations(@Headers("authorization") authorization: string) { return this.forward("/api/v1/purchases/operations", "GET", authorization); }
 
   @Get()
   list(@Headers("authorization") authorization: string) {
@@ -310,6 +316,7 @@ class PaymentsProxyController {
 class TicketsProxyController {
   private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Get() list(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets", authorization); }
+  @Get("operations") operations(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets/operations", authorization); }
   @Get(":ticketId/route") route(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}/route`, authorization); }
   @Get(":ticketId") getTicket(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}`, authorization); }
 }
@@ -317,13 +324,16 @@ class TicketsProxyController {
 class JourneysProxyController {
   private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Get() list(@Headers("authorization") authorization: string, @Query("ticketId") ticketId?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (ticketId) query.set("ticketId", ticketId); if (status) query.set("status", status); const suffix = query.size ? `?${query.toString()}` : ""; return this.get(`/api/v1/journeys${suffix}`, authorization); }
+  @Get("operations") operations(@Headers("authorization") authorization: string) { return this.get("/api/v1/journeys/operations", authorization); }
   @Get(":journeyId") journey(@Headers("authorization") authorization: string, @Param("journeyId") id: string) { return this.get(`/api/v1/journeys/${id}`, authorization); }
 }
 @Controller("api/v1/gate")
 class GateProxyController {
+  @Get("operations/events") async events(@Headers("authorization") authorization: string) { return this.forward("/api/v1/gate/operations/events", authorization); }
   @Get("entry-gates") async gates() { return this.listGates("entry-gates"); }
   @Get("exit-gates") async exitGates() { return this.listGates("exit-gates"); }
   private async listGates(path: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/${path}`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  private async forward(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Post("validate-entry") async entry(@Headers("authorization") authorization: string, @Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { await this.assertOwner(authorization, body); return this.validate("validate-entry", idempotencyKey, body); }
   @Post("validate-exit") async exit(@Headers("authorization") authorization: string, @Headers("idempotency-key") idempotencyKey: string, @Body() body: unknown) { await this.assertOwner(authorization, body); return this.validate("validate-exit", idempotencyKey, body); }
   private async assertOwner(authorization: string, body: unknown) {
@@ -334,6 +344,13 @@ class GateProxyController {
     if (!response.ok) throw new HttpException(await response.json(), response.status);
   }
   private async validate(path: string, idempotencyKey: string, body: unknown) { const response = await fetch(`${process.env.GATE_SERVICE_URL ?? "http://localhost:3005"}/api/v1/gate/${path}`, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey ?? "", "x-gate-api-key": process.env.GATE_API_KEY_SECRET ?? "" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+}
+@Controller("api/v1/admin")
+class AdminProxyController {
+  private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
+  @Get("outbox") outbox(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/outbox", authorization); }
+  @Get("inconsistencies") inconsistencies(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/inconsistencies", authorization); }
+  @Get("analytics") analytics(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/analytics", authorization); }
 }
 @Module({
   controllers: [
@@ -350,6 +367,7 @@ class GateProxyController {
     TicketsProxyController,
     JourneysProxyController,
     GateProxyController,
+    AdminProxyController,
   ],
 })
 class AppModule {}

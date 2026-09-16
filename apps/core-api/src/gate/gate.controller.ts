@@ -6,13 +6,19 @@ import {
   Headers,
   Post,
   UnauthorizedException,
+  UseGuards,
 } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { GateValidationDto } from "./gate.validation.dto";
 import { GateService } from "./gate.service";
+import { Roles } from "../auth/auth.decorators";
+import { RolesGuard } from "../auth/roles.guard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 @Controller("internal/v1/gate")
 export class GateController {
   constructor(private readonly gates: GateService) {}
+  @Get("operations/events") @UseGuards(JwtAuthGuard, RolesGuard) @Roles("ADMIN", "OPERATOR")
+  events() { return this.gates.listEventsForOperations().then((events) => ({ success: true, data: { events } })); }
   private validateHeaders(key: string, requestId: string) {
     if (!key || key !== process.env.GATE_API_KEY_SECRET)
       throw new UnauthorizedException("Invalid gate API key.");

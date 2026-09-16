@@ -1,2 +1,11 @@
-import { FeaturePage } from "../../app-shell";
-export default function AdminJourneysPage() { return <FeaturePage eyebrow="Administration" title="Journey operations" description="Search and inspect journey statuses here."/>; }
+"use client";
+import { useEffect, useState } from "react";
+import { AppShell } from "../../app-shell";
+import { getAccessToken, refreshAccessToken } from "../../auth-client";
+const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+type Journey = { id: string; email: string; status: string; entryStation: { name: string }; actualExitStation?: { name: string } | null; enteredAt: string; exitedAt?: string | null; expiresAt: string };
+export default function AdminJourneysPage() {
+  const [journeys, setJourneys] = useState<Journey[]>([]); const [error, setError] = useState("");
+  useEffect(() => { void (async () => { const token = getAccessToken() ?? (await refreshAccessToken()); if (!token) return setError("Your operations session has expired."); const response = await fetch(`${api}/api/v1/journeys/operations`, { credentials: "include", headers: { authorization: `Bearer ${token}` } }); const body = await response.json(); if (!response.ok) return setError(body.message ?? "Unable to load journeys."); setJourneys(body.data.journeys); })().catch(() => setError("Unable to load journeys.")); }, []);
+  return <AppShell eyebrow="Administration"><div className="admin-header"><div><span className="sim-kicker">OPERATIONS</span><h1 className="page-title">Journey operations</h1><p>Monitor active, completed, and timed-out passenger journeys.</p></div></div>{error ? <p className="admin-notice error">{error}</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Passenger</th><th>Entry</th><th>Exit</th><th>Status</th><th>Entered</th><th>Exited / expires</th></tr></thead><tbody>{journeys.map((journey) => <tr key={journey.id}><td>{journey.email}</td><td>{journey.entryStation.name}</td><td>{journey.actualExitStation?.name ?? "—"}</td><td><span className="admin-tag">{journey.status}</span></td><td>{new Date(journey.enteredAt).toLocaleString()}</td><td>{journey.exitedAt ? new Date(journey.exitedAt).toLocaleString() : new Date(journey.expiresAt).toLocaleString()}</td></tr>)}</tbody></table></div>}</AppShell>;
+}
