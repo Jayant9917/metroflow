@@ -70,6 +70,36 @@ const rejectionMessages: Record<string, string> = {
   GATE_INACTIVE: "This gate is currently unavailable.",
 };
 
+type VisualCheckpoint = {
+  trainIndex: number;
+  selectedExit: number;
+  updatedAt: number;
+};
+
+function checkpointKey(ticketId: string) {
+  return `metroflow:journey-simulator:${ticketId}`;
+}
+
+function readCheckpoint(ticketId: string, routeLength: number) {
+  try {
+    const raw = window.sessionStorage.getItem(checkpointKey(ticketId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<VisualCheckpoint>;
+    if (!Number.isFinite(parsed.trainIndex) || !Number.isFinite(parsed.selectedExit)) return null;
+    const last = Math.max(1, routeLength - 1);
+    return {
+      trainIndex: Math.min(last, Math.max(0, Math.floor(parsed.trainIndex!))),
+      selectedExit: Math.min(last, Math.max(1, Math.floor(parsed.selectedExit!))),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearCheckpoint(ticketId: string) {
+  window.sessionStorage.removeItem(checkpointKey(ticketId));
+}
+
 async function read(response: Response) {
   const text = await response.text();
   try {
@@ -101,6 +131,7 @@ export default function JourneySimulatorPage() {
     null,
   );
   const busy = useRef(false);
+  const journeyRefresh = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReducedMotion(media.matches);
@@ -179,7 +210,8 @@ export default function JourneySimulatorPage() {
           );
         setTicket(loadedTicket);
         setStations(route);
-        setSelectedExit(Math.max(1, route.length - 1));
+        const saved = readCheckpoint(ticketId, route.length);
+        setSelectedExit(saved?.selectedExit ?? Math.max(1, route.length - 1));
         if (loadedTicket.status === "ISSUED") {
           if (Date.parse(loadedTicket.expiresAt) <= Date.now())
             throw new Error(rejectionMessages.TICKET_EXPIRED);
@@ -216,6 +248,8 @@ export default function JourneySimulatorPage() {
               Date.parse(loadedJourney.expiresAt) <= Date.now()
             )
               throw new Error(rejectionMessages.JOURNEY_TIMED_OUT);
+            setTrainIndex(saved?.trainIndex ?? 0);
+            setVisualIndex(saved?.trainIndex ?? 0);
             setState("IN_TRANSIT");
           } else throw new Error("This ticket cannot start a journey.");
         }
@@ -245,7 +279,7 @@ export default function JourneySimulatorPage() {
     )
       return;
     let cancelled = false;
-    const timer = window.setInterval(async () => {
+    const refresh = async () => {
       try {
         const body = await authGet(`/api/v1/journeys/${journey.id}`);
         if (cancelled) return;
@@ -259,12 +293,28 @@ export default function JourneySimulatorPage() {
       } catch {
         /* A failed read never changes the durable journey state. */
       }
-    }, 5000);
+    };
+    journeyRefresh.current = refresh;
+    const timer = window.setInterval(refresh, 5000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (journeyRefresh.current === refresh) journeyRefresh.current = null;
     };
   }, [journey?.id, journey?.status, state]);
+
+  useEffect(() => {
+    if (!ticketId || !ticket || ticket.status !== "IN_JOURNEY" || journey?.status !== "ACTIVE") return;
+    window.sessionStorage.setItem(
+      checkpointKey(ticketId),
+      JSON.stringify({ trainIndex, selectedExit, updatedAt: Date.now() } satisfies VisualCheckpoint),
+    );
+  }, [ticketId, ticket?.status, journey?.status, trainIndex, selectedExit]);
 
   function fail(
     code: string,
@@ -383,6 +433,7 @@ export default function JourneySimulatorPage() {
         status: "COMPLETED",
       }));
       setTicket((current) => current && { ...current, status: "COMPLETED" });
+      clearCheckpoint(ticketId);
       scan.current = null;
       setState("EXITING");
     } catch (cause) {
