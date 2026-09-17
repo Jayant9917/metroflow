@@ -76,9 +76,10 @@ export class JourneysService {
       requestId: uuidv7(),
     };
   }
-  async listForOperations() {
-    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email")} JOIN users u ON u.id=j.user_id ORDER BY j.created_at DESC LIMIT 200`)).rows;
-    return rows.map((row) => ({ ...this.shape(row), email: row.email }));
+  async listForOperations(page = 1, pageSize = 25) {
+    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email, COUNT(*) OVER()::integer total_count")} JOIN users u ON u.id=j.user_id ORDER BY j.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize])).rows;
+    const totalItems = rows[0]?.total_count ?? 0;
+    return { journeys: rows.map((row) => ({ ...this.shape(row), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }
   private async expireOverdue(userId: string) {
     await this.pool.query(

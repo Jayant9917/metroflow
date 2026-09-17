@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/auth.decorators";
 import { Roles } from "../auth/auth.decorators";
 import { RolesGuard } from "../auth/roles.guard";
@@ -12,7 +12,8 @@ import { PurchasesService } from "./purchases.service";
 export class PurchasesController {
   constructor(private readonly purchases: PurchasesService) {}
   @Get("operations") @UseGuards(RolesGuard) @Roles("ADMIN", "OPERATOR")
-  operations() { return this.purchases.listForOperations().then((purchases) => ({ success: true, data: { purchases } })); }
+  operations(@Query("page") page?: string, @Query("pageSize") pageSize?: string) { const p = this.parsePage(page, "page", 1), s = this.parsePage(pageSize, "pageSize", 25); if (s > 100) throw new BadRequestException("pageSize must be between 1 and 100."); return this.purchases.listForOperations(p, s).then((data) => ({ success: true, data })); }
+  private parsePage(value: string | undefined, name: string, fallback: number) { if (value === undefined) return fallback; if (!/^\d+$/.test(value) || Number(value) < 1) throw new BadRequestException(`${name} must be a positive integer.`); return Number(value); }
 
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePurchaseDto) {
