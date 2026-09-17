@@ -77,9 +77,10 @@ export class GateService {
     ).rows;
     return { success: true, data: { gates: rows }, requestId: uuidv7() };
   }
-  async listEventsForOperations() {
-    const rows = (await this.pool.query(`SELECT e.id, e.event_type, e.rejection_reason, e.request_id, e.occurred_at, g.code gate_code, s.name station_name, t.id ticket_id FROM gate_events e JOIN gates g ON g.id=e.gate_id JOIN stations s ON s.id=e.station_id LEFT JOIN tickets t ON t.id=e.ticket_id ORDER BY e.occurred_at DESC LIMIT 200`)).rows;
-    return rows;
+  async listEventsForOperations(page = 1, pageSize = 25, eventType?: string) {
+    const rows = (await this.pool.query(`SELECT e.id, e.event_type, e.rejection_reason, e.request_id, e.occurred_at, g.code gate_code, s.name station_name, t.id ticket_id, COUNT(*) OVER()::integer total_count FROM gate_events e JOIN gates g ON g.id=e.gate_id JOIN stations s ON s.id=e.station_id LEFT JOIN tickets t ON t.id=e.ticket_id WHERE ($3::text IS NULL OR e.event_type=$3) ORDER BY e.occurred_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, eventType ?? null])).rows;
+    const totalItems = rows[0]?.total_count ?? 0;
+    return { events: rows, pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }
   async validateEntry(
     dto: GateValidationRequest,

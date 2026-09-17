@@ -1,22 +1,4 @@
 "use client";
-import { useEffect, useState } from "react";
-import { AppShell } from "../../app-shell";
-import { getAccessToken, refreshAccessToken } from "../../auth-client";
-
-const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-type Gate = { id: string; code: string; type: string; status: string };
-type Station = { id: string; code: string; name: string; lineOrder: number; isActive: boolean; gates: Gate[] };
-
-export default function AdminStationsPage() {
-  const [stations, setStations] = useState<Station[]>([]);
-  const [error, setError] = useState("");
-  useEffect(() => { void (async () => {
-    const token = getAccessToken() ?? (await refreshAccessToken());
-    if (!token) return setError("Your operations session has expired.");
-    const response = await fetch(`${api}/api/v1/stations/operations`, { credentials: "include", headers: { authorization: `Bearer ${token}` } });
-    const body = await response.json();
-    if (!response.ok) return setError(body.message ?? "Unable to load station operations.");
-    setStations(body.data.stations);
-  })().catch(() => setError("Unable to load station operations.")); }, []);
-  return <AppShell eyebrow="Administration"><div className="admin-header"><div><span className="sim-kicker">OPERATIONS</span><h1 className="page-title">Stations and gates</h1><p>Review the ordered demo line and the physical gates available at each station.</p></div></div>{error ? <p className="admin-notice error">{error}</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order</th><th>Station</th><th>Code</th><th>Gates</th><th>Status</th></tr></thead><tbody>{stations.map((station) => <tr key={station.id}><td>{station.lineOrder}</td><td><strong>{station.name}</strong></td><td>{station.code}</td><td>{station.gates.map((gate) => <span className="admin-tag" key={gate.id}>{gate.type} · {gate.code}</span>)}</td><td>{station.isActive ? "ACTIVE" : "INACTIVE"}</td></tr>)}</tbody></table></div>}</AppShell>;
-}
+import { useEffect,useState } from "react"; import { AppShell } from "../../app-shell"; import { getAccessToken,refreshAccessToken } from "../../auth-client";
+const api=process.env.NEXT_PUBLIC_API_URL??"http://localhost:3001"; type Gate={id:string;code:string;type:string;status:string}; type Station={id:string;code:string;name:string;lineOrder:number;isActive:boolean;gates:Gate[]};
+export default function AdminStationsPage(){const [stations,setStations]=useState<Station[]>([]);const [role,setRole]=useState("");const [error,setError]=useState("");const [saving,setSaving]=useState("");async function load(){const token=getAccessToken()??await refreshAccessToken();if(!token)return setError("Your operations session has expired.");const headers={authorization:`Bearer ${token}`};const [response,me]=await Promise.all([fetch(`${api}/api/v1/stations/operations`,{credentials:"include",headers}),fetch(`${api}/api/v1/auth/me`,{credentials:"include",headers})]);const body=await response.json();if(!response.ok)return setError(body.message??"Unable to load station operations.");setStations(body.data.stations);if(me.ok)setRole((await me.json()).user?.role??"");}useEffect(()=>{void load().catch(()=>setError("Unable to load station operations."));},[]);async function update(path:string,body:unknown){const token=getAccessToken()??await refreshAccessToken();if(!token)return;setSaving(path);try{const response=await fetch(`${api}${path}`,{method:"PATCH",credentials:"include",headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},body:JSON.stringify(body)});if(!response.ok){const data=await response.json();throw new Error(data.message??"Update failed.");}await load();}catch(e){setError(e instanceof Error?e.message:"Update failed.");}finally{setSaving("");}}return <AppShell eyebrow="Administration"><div className="admin-header"><span className="sim-kicker">OPERATIONS</span><h1 className="page-title">Stations and gates</h1><p>Operators control live availability; admins have read-only oversight.</p></div>{error&&<p className="admin-notice error">{error}</p>}{role!=="OPERATOR"&&<p className="admin-notice">Read-only view. Sign in as an operator to change status.</p>}<div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order</th><th>Station</th><th>Code</th><th>Gates</th><th>Status</th></tr></thead><tbody>{stations.map(s=><tr key={s.id}><td>{s.lineOrder}</td><td><strong>{s.name}</strong></td><td>{s.code}</td><td>{s.gates.map(g=><span className="admin-tag" key={g.id}>{g.type} · {g.code} <button disabled={role!=="OPERATOR"||saving===g.id} onClick={()=>void update(`/api/v1/stations/gates/${g.id}/status`,{status:g.status==="ACTIVE"?"INACTIVE":"ACTIVE"})}>{g.status}</button></span>)}</td><td>{role==="OPERATOR"?<button className="button secondary" disabled={saving===s.id} onClick={()=>void update(`/api/v1/stations/${s.id}/status`,{isActive:!s.isActive})}>{s.isActive?"ACTIVE":"INACTIVE"}</button>:s.isActive?"ACTIVE":"INACTIVE"}</td></tr>)}</tbody></table></div></AppShell>}

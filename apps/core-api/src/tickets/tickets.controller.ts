@@ -11,11 +11,12 @@ import { TicketsService } from "./tickets.service";
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}
   @Get("operations") @UseGuards(RolesGuard) @Roles("ADMIN", "OPERATOR")
-  operations(@Query("page") page?: string, @Query("pageSize") pageSize?: string) {
+  operations(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) {
     const parsedPage = this.parsePositiveInteger(page, "page", 1);
     const parsedPageSize = this.parsePositiveInteger(pageSize, "pageSize", 25);
     if (parsedPageSize > 100) throw new BadRequestException({ code: "VALIDATION_ERROR", message: "pageSize must be between 1 and 100." });
-    return this.tickets.listForOperations(parsedPage, parsedPageSize).then((data) => ({ success: true, data }));
+    if (status !== undefined && !["ISSUED", "IN_JOURNEY", "COMPLETED", "EXPIRED"].includes(status)) throw new BadRequestException({ code: "VALIDATION_ERROR", message: "Invalid ticket status." });
+    return this.tickets.listForOperations(parsedPage, parsedPageSize, status).then((data) => ({ success: true, data }));
   }
   private parsePositiveInteger(value: string | undefined, name: string, fallback: number) {
     if (value === undefined) return fallback;

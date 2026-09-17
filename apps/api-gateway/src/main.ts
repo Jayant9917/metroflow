@@ -11,6 +11,7 @@ import {
   HttpStatus,
   Module,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -203,6 +204,8 @@ class ProtectedAuthProxyController {
 }
 @Controller("api/v1/stations")
 class StationsProxyController {
+  @Patch(":stationId/status") async setStation(@Headers("authorization") authorization: string, @Param("stationId") id: string, @Body() body: unknown) { return this.mutate(`/api/v1/stations/${id}/status`, authorization, body); }
+  @Patch("gates/:gateId/status") async setGate(@Headers("authorization") authorization: string, @Param("gateId") id: string, @Body() body: unknown) { return this.mutate(`/api/v1/stations/gates/${id}/status`, authorization, body); }
   @Get("operations")
   async operations(@Headers("authorization") authorization: string) {
     return this.forward("/api/v1/stations/operations", authorization);
@@ -217,6 +220,7 @@ class StationsProxyController {
     if (!response.ok) throw new HttpException(data, response.status);
     return data;
   }
+  private async mutate(path: string, authorization: string, body: unknown) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { method: "PATCH", headers: { authorization: authorization ?? "", "content-type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
 }
 @Controller("api/v1/fare-quotes")
 class FareQuotesProxyController {
@@ -265,7 +269,7 @@ class PurchasesProxyController {
     return this.forward("/api/v1/purchases", "POST", authorization, body);
   }
   @Get("operations")
-  operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); return this.forward(`/api/v1/purchases/operations${query.size ? `?${query.toString()}` : ""}`, "GET", authorization); }
+  operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (status) query.set("status", status); return this.forward(`/api/v1/purchases/operations${query.size ? `?${query.toString()}` : ""}`, "GET", authorization); }
 
   @Get()
   list(@Headers("authorization") authorization: string) {
@@ -316,7 +320,7 @@ class PaymentsProxyController {
 class TicketsProxyController {
   private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Get() list(@Headers("authorization") authorization: string) { return this.get("/api/v1/tickets", authorization); }
-  @Get("operations") operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); return this.get(`/api/v1/tickets/operations${query.size ? `?${query.toString()}` : ""}`, authorization); }
+  @Get("operations") operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (status) query.set("status", status); return this.get(`/api/v1/tickets/operations${query.size ? `?${query.toString()}` : ""}`, authorization); }
   @Get(":ticketId/route") route(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}/route`, authorization); }
   @Get(":ticketId") getTicket(@Headers("authorization") authorization: string, @Param("ticketId") id: string) { return this.get(`/api/v1/tickets/${id}`, authorization); }
 }
@@ -324,12 +328,12 @@ class TicketsProxyController {
 class JourneysProxyController {
   private async get(path: string, authorization: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}${path}`, { headers: { authorization: authorization ?? "" } }); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }
   @Get() list(@Headers("authorization") authorization: string, @Query("ticketId") ticketId?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (ticketId) query.set("ticketId", ticketId); if (status) query.set("status", status); const suffix = query.size ? `?${query.toString()}` : ""; return this.get(`/api/v1/journeys${suffix}`, authorization); }
-  @Get("operations") operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); return this.get(`/api/v1/journeys/operations${query.size ? `?${query.toString()}` : ""}`, authorization); }
+  @Get("operations") operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (status) query.set("status", status); return this.get(`/api/v1/journeys/operations${query.size ? `?${query.toString()}` : ""}`, authorization); }
   @Get(":journeyId") journey(@Headers("authorization") authorization: string, @Param("journeyId") id: string) { return this.get(`/api/v1/journeys/${id}`, authorization); }
 }
 @Controller("api/v1/gate")
 class GateProxyController {
-  @Get("operations/events") async events(@Headers("authorization") authorization: string) { return this.forward("/api/v1/gate/operations/events", authorization); }
+  @Get("operations/events") async events(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("eventType") eventType?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (eventType) query.set("eventType", eventType); return this.forward(`/api/v1/gate/operations/events${query.size ? `?${query.toString()}` : ""}`, authorization); }
   @Get("entry-gates") async gates() { return this.listGates("entry-gates"); }
   @Get("exit-gates") async exitGates() { return this.listGates("exit-gates"); }
   private async listGates(path: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/${path}`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }

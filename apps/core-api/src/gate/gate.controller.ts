@@ -7,6 +7,7 @@ import {
   Post,
   UnauthorizedException,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { GateValidationDto } from "./gate.validation.dto";
@@ -18,7 +19,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 export class GateController {
   constructor(private readonly gates: GateService) {}
   @Get("operations/events") @UseGuards(JwtAuthGuard, RolesGuard) @Roles("ADMIN", "OPERATOR")
-  events() { return this.gates.listEventsForOperations().then((events) => ({ success: true, data: { events } })); }
+  events(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("eventType") eventType?: string) { const p = page ? Number(page) : 1, s = pageSize ? Number(pageSize) : 25; if (!Number.isInteger(p) || p < 1 || !Number.isInteger(s) || s < 1 || s > 100) throw new BadRequestException("Invalid pagination parameters."); if (eventType !== undefined && !["ENTRY_ACCEPTED", "ENTRY_REJECTED", "EXIT_ACCEPTED", "EXIT_REJECTED"].includes(eventType)) throw new BadRequestException("Invalid gate event type."); return this.gates.listEventsForOperations(p, s, eventType).then((data) => ({ success: true, data })); }
   private validateHeaders(key: string, requestId: string) {
     if (!key || key !== process.env.GATE_API_KEY_SECRET)
       throw new UnauthorizedException("Invalid gate API key.");

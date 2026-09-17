@@ -23,4 +23,14 @@ export class StationsService {
     `);
     return result.rows;
   }
+  async setStationStatus(id: string, isActive: boolean) {
+    const row = (await this.pool.query("UPDATE stations SET is_active=$2, updated_at=NOW() WHERE id=$1 RETURNING id, code, name, is_active AS \"isActive\"", [id, isActive])).rows[0];
+    if (!row) throw new Error("Station not found.");
+    return row;
+  }
+  async setGateStatus(id: string, status: "ACTIVE" | "INACTIVE") {
+    const row = (await this.pool.query("UPDATE gates SET status=$2, updated_at=NOW() WHERE id=$1 RETURNING id, station_id, code, type, status", [id, status])).rows[0];
+    if (!row) throw new Error("Gate not found.");
+    return row;
+  }
 }
