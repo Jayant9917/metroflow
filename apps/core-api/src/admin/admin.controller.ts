@@ -5,12 +5,15 @@ import { RolesGuard } from "../auth/roles.guard";
 import { AdminOutboxService } from "./outbox.service";
 import { AdminInconsistenciesService } from "./inconsistencies.service";
 import { AdminAnalyticsService } from "./analytics.service";
+import { AdminAuditService } from "./audit.service";
 
 @Controller("api/v1/admin")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles("ADMIN", "OPERATOR")
 export class AdminController {
-  constructor(private readonly outbox: AdminOutboxService, private readonly inconsistencies: AdminInconsistenciesService, private readonly analytics: AdminAnalyticsService) {}
+  constructor(private readonly outbox: AdminOutboxService, private readonly inconsistencies: AdminInconsistenciesService, private readonly analytics: AdminAnalyticsService, private readonly audit: AdminAuditService) {}
+  @Get("audit")
+  async auditEvents() { return { success: true, data: { events: await this.audit.list() } }; }
   @Get("analytics")
   async analyticsSummary() { return { success: true, data: { summary: await this.analytics.summary() } }; }
   @Get("outbox")

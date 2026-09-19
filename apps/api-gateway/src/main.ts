@@ -355,6 +355,7 @@ class AdminProxyController {
   @Get("outbox") outbox(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/outbox", authorization); }
   @Get("inconsistencies") inconsistencies(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/inconsistencies", authorization); }
   @Get("analytics") analytics(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/analytics", authorization); }
+  @Get("audit") audit(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/audit", authorization); }
 }
 @Module({
   controllers: [

@@ -27,6 +27,7 @@ import { AdminController } from "./admin/admin.controller";
 import { AdminOutboxService } from "./admin/outbox.service";
 import { AdminInconsistenciesService } from "./admin/inconsistencies.service";
 import { AdminAnalyticsService } from "./admin/analytics.service";
+import { AdminAuditService } from "./admin/audit.service";
 @Controller()
 class HealthController {
   @Get("health") health() {
@@ -61,6 +62,7 @@ class HealthController {
     AdminOutboxService,
     AdminInconsistenciesService,
     AdminAnalyticsService,
+    AdminAuditService,
   ],
 })
 class AppModule {}

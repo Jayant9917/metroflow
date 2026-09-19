@@ -13,12 +13,13 @@ const areas = [
   ["Gate events", "/admin/gate-events", "Review accepted, rejected, and replayed scans."],
   ["Inconsistencies", "/admin/inconsistencies", "Find records that need operational review."],
   ["Outbox", "/admin/outbox", "Monitor pending and published domain events."],
+  ["Operator audit", "/admin/audit", "Review station and gate changes made by operations staff."],
 ] as const;
 
 export default function AdminPage() {
   const [status, setStatus] = useState<"loading" | "allowed" | "denied">("loading");
   const [role, setRole] = useState<"ADMIN" | "OPERATOR" | null>(null);
-  const [summary, setSummary] = useState<Record<string, Record<string, number>> & { activeStations?: number } | null>(null);
+  const [summary, setSummary] = useState<Record<string, Record<string, number>> & { activeStations?: number; revenue?: number } | null>(null);
   useEffect(() => {
     void (async () => {
       const token = getAccessToken() ?? (await refreshAccessToken());
@@ -41,7 +42,7 @@ export default function AdminPage() {
     <div className="admin-header"><div><span className="sim-kicker">CONTROL ROOM</span><h1 className="page-title">Operations overview</h1><p>Protected tools for monitoring MetroFlow’s ticket and journey lifecycle.</p></div><span className={`sim-ticket-status status-${status}`}>{status === "loading" ? "VERIFYING ACCESS" : status === "allowed" ? `${role} ACCESS` : "ACCESS DENIED"}</span></div>
     {status === "loading" && <p className="admin-notice">Checking your operations role...</p>}
     {status === "denied" && <p className="admin-notice error">This area is restricted to administrators and operators. Sign in with an operations account.</p>}
-    {status === "allowed" && summary && <div className="admin-metrics" style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:14,marginBottom:28}}>{[["Active stations", summary.activeStations ?? 0], ["Issued tickets", summary.tickets?.ISSUED ?? 0], ["Active journeys", summary.journeys?.ACTIVE ?? 0], ["Completed journeys", summary.journeys?.COMPLETED ?? 0], ["Paid purchases", summary.purchases?.PAID ?? 0], ["Rejected scans", (summary.gateEvents?.ENTRY_REJECTED ?? 0) + (summary.gateEvents?.EXIT_REJECTED ?? 0)]].map(([label, value]) => <div className="admin-metric" style={{padding:18,border:"1px solid #d8e4f2",borderRadius:16,background:"#fff"}} key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
+    {status === "allowed" && summary && <div className="admin-metrics" style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:14,marginBottom:28}}>{[["Active stations", summary.activeStations ?? 0], ["Issued tickets", summary.tickets?.ISSUED ?? 0], ["Active journeys", summary.journeys?.ACTIVE ?? 0], ["Completed journeys", summary.journeys?.COMPLETED ?? 0], ["Paid purchases", summary.purchases?.PAID ?? 0], ["Revenue", `INR ${Number(summary.revenue ?? 0).toFixed(2)}`], ["Rejected scans", (summary.gateEvents?.ENTRY_REJECTED ?? 0) + (summary.gateEvents?.EXIT_REJECTED ?? 0)]].map(([label, value]) => <div className="admin-metric" style={{padding:18,border:"1px solid #d8e4f2",borderRadius:16,background:"#fff"}} key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
     {status === "allowed" && <div className="admin-grid">{areas.map(([title, href, description]) => <Link className="admin-card" href={href} key={href}><span className="sim-kicker">OPERATIONS</span><h2>{title}</h2><p>{description}</p><strong>Open area →</strong></Link>)}</div>}
   </AppShell>;
 }

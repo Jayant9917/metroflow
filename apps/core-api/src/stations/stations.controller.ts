@@ -3,6 +3,8 @@ import { Roles } from "../auth/auth.decorators";
 import { RolesGuard } from "../auth/roles.guard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { StationsService } from "./stations.service";
+import { CurrentUser } from "../auth/auth.decorators";
+import { AuthUser } from "../auth/auth.types";
 
 @Controller("api/v1/stations")
 @UseGuards(JwtAuthGuard)
@@ -26,15 +28,15 @@ export class StationsController {
   @Patch(":stationId/status")
   @UseGuards(RolesGuard)
   @Roles("OPERATOR")
-  async setStationStatus(@Param("stationId") stationId: string, @Body() body: { isActive?: boolean }) {
+  async setStationStatus(@CurrentUser() user: AuthUser, @Param("stationId") stationId: string, @Body() body: { isActive?: boolean }) {
     if (typeof body?.isActive !== "boolean") throw new Error("isActive must be boolean.");
-    return { success: true, data: { station: await this.stations.setStationStatus(stationId, body.isActive) } };
+    return { success: true, data: { station: await this.stations.setStationStatus(stationId, body.isActive, user.sub) } };
   }
   @Patch("gates/:gateId/status")
   @UseGuards(RolesGuard)
   @Roles("OPERATOR")
-  async setGateStatus(@Param("gateId") gateId: string, @Body() body: { status?: string }) {
+  async setGateStatus(@CurrentUser() user: AuthUser, @Param("gateId") gateId: string, @Body() body: { status?: string }) {
     if (body?.status !== "ACTIVE" && body?.status !== "INACTIVE") throw new Error("status must be ACTIVE or INACTIVE.");
-    return { success: true, data: { gate: await this.stations.setGateStatus(gateId, body.status) } };
+    return { success: true, data: { gate: await this.stations.setGateStatus(gateId, body.status, user.sub) } };
   }
 }

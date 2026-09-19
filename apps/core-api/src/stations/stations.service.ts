@@ -23,14 +23,16 @@ export class StationsService {
     `);
     return result.rows;
   }
-  async setStationStatus(id: string, isActive: boolean) {
+  async setStationStatus(id: string, isActive: boolean, actorId: string) {
     const row = (await this.pool.query("UPDATE stations SET is_active=$2, updated_at=NOW() WHERE id=$1 RETURNING id, code, name, is_active AS \"isActive\"", [id, isActive])).rows[0];
     if (!row) throw new Error("Station not found.");
+    await this.pool.query("INSERT INTO auth_audit_logs (id,user_id,action,outcome,metadata) VALUES (gen_random_uuid(),$1,'STATION_STATUS_CHANGED','SUCCESS',$2)", [actorId, JSON.stringify({ stationId: id, isActive })]);
     return row;
   }
-  async setGateStatus(id: string, status: "ACTIVE" | "INACTIVE") {
+  async setGateStatus(id: string, status: "ACTIVE" | "INACTIVE", actorId: string) {
     const row = (await this.pool.query("UPDATE gates SET status=$2, updated_at=NOW() WHERE id=$1 RETURNING id, station_id, code, type, status", [id, status])).rows[0];
     if (!row) throw new Error("Gate not found.");
+    await this.pool.query("INSERT INTO auth_audit_logs (id,user_id,action,outcome,metadata) VALUES (gen_random_uuid(),$1,'GATE_STATUS_CHANGED','SUCCESS',$2)", [actorId, JSON.stringify({ gateId: id, status })]);
     return row;
   }
 }
