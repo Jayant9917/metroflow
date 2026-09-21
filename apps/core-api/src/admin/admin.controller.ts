@@ -13,11 +13,15 @@ import { AdminAuditService } from "./audit.service";
 export class AdminController {
   constructor(private readonly outbox: AdminOutboxService, private readonly inconsistencies: AdminInconsistenciesService, private readonly analytics: AdminAnalyticsService, private readonly audit: AdminAuditService) {}
   @Get("audit")
+  @Roles("ADMIN")
   async auditEvents() { return { success: true, data: { events: await this.audit.list() } }; }
   @Get("analytics")
+  @Roles("ADMIN")
   async analyticsSummary() { return { success: true, data: { summary: await this.analytics.summary() } }; }
   @Get("outbox")
+  @Roles("ADMIN")
   async outboxEvents() { return { success: true, data: { events: await this.outbox.list() } }; }
   @Get("inconsistencies")
+  @Roles("ADMIN")
   async inconsistencyReport() { return { success: true, data: { issues: await this.inconsistencies.list() } }; }
 }
