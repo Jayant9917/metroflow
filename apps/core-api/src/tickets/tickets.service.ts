@@ -114,9 +114,9 @@ export class TicketsService {
       requestId: uuidv7(),
     };
   }
-  async listForOperations(page = 1, pageSize = 25, status?: string) {
+  async listForOperations(page = 1, pageSize = 25, status?: string, search?: string) {
     const offset = (page - 1) * pageSize;
-    const result = await this.pool.query(`SELECT t.*, u.email, o.code origin_code, o.name origin_name, d.code destination_code, d.name destination_name, COUNT(*) OVER()::integer total_count FROM tickets t JOIN users u ON u.id=t.user_id JOIN stations o ON o.id=t.origin_station_id JOIN stations d ON d.id=t.destination_station_id WHERE ($3::text IS NULL OR t.status=$3) ORDER BY t.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, offset, status ?? null]);
+    const result = await this.pool.query(`SELECT t.*, u.email, o.code origin_code, o.name origin_name, d.code destination_code, d.name destination_name, COUNT(*) OVER()::integer total_count FROM tickets t JOIN users u ON u.id=t.user_id JOIN stations o ON o.id=t.origin_station_id JOIN stations d ON d.id=t.destination_station_id WHERE ($3::text IS NULL OR t.status=$3) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(t.id AS text) ILIKE $4 OR CAST(t.purchase_id AS text) ILIKE $4) ORDER BY t.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, offset, status ?? null, search ? `%${search}%` : null]);
     const totalItems = result.rows[0]?.total_count ?? 0;
     return { tickets: result.rows.map((row) => ({ ...this.shape({ ...row, origin_id: row.origin_station_id, destination_id: row.destination_station_id }), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }
