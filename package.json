@@ -10,6 +10,7 @@
     "test:e2e": "playwright test",
     "test:e2e:simulator": "playwright test e2e/simulator-resume.spec.ts --workers=1",
     "test:simulator-api": "pnpm --filter @metroflow/core-api build && node scripts/test-simulator-api.cjs"
+    ,"test:permissions": "node scripts/test-permissions.cjs"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
