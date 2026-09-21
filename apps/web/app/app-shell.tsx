@@ -2,11 +2,13 @@
 
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { clearAccessToken, getAccessToken } from "./auth-client";
 
 export function AppShell({ children, eyebrow = "MetroFlow" }: { children: ReactNode; eyebrow?: string }) {
   const pathname = usePathname();
   const operations = pathname.startsWith("/admin");
-  return <main className="dashboard"><header className="dashboard-nav"><a className="brand brand-lockup" href={operations ? "/admin" : "/dashboard"}><img src="/metro.png" alt="" aria-hidden="true" />MetroFlow</a><nav>{operations ? <a href="/admin">Operations</a> : <><a href="/journey/new">Plan journey</a><a href="/purchases">Purchases</a><a href="/tickets">Tickets</a><a href="/journeys">Journeys</a><a href="/account">Account</a></>}</nav></header><section className="dashboard-content"><div className="eyebrow">{eyebrow}</div>{children}</section></main>;
+  async function logout() { const token = getAccessToken(); await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/logout`, { method: "POST", credentials: "include", headers: token ? { authorization: `Bearer ${token}` } : undefined }); clearAccessToken(); window.location.href = "/login"; }
+  return <main className="dashboard"><header className="dashboard-nav"><a className="brand brand-lockup" href={operations ? "/admin" : "/dashboard"}><img src="/metro.png" alt="" aria-hidden="true" />MetroFlow</a><nav>{operations ? <><a href="/admin">Operations</a><button type="button" onClick={() => void logout()} className="nav-logout">Log out</button></> : <><a href="/journey/new">Plan journey</a><a href="/purchases">Purchases</a><a href="/tickets">Tickets</a><a href="/journeys">Journeys</a><a href="/account">Account</a></>}</nav></header><section className="dashboard-content"><div className="eyebrow">{eyebrow}</div>{children}</section></main>;
 }
 
 export function FeaturePage({ title, description, links = [], eyebrow = "MetroFlow" }: { title: string; description: string; links?: { label: string; href: string }[]; eyebrow?: string }) {
