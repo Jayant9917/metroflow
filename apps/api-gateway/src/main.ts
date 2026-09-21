@@ -269,7 +269,7 @@ class PurchasesProxyController {
     return this.forward("/api/v1/purchases", "POST", authorization, body);
   }
   @Get("operations")
-  operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (status) query.set("status", status); return this.forward(`/api/v1/purchases/operations${query.size ? `?${query.toString()}` : ""}`, "GET", authorization); }
+  operations(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string, @Query("search") search?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (status) query.set("status", status); if (search) query.set("search", search); return this.forward(`/api/v1/purchases/operations${query.size ? `?${query.toString()}` : ""}`, "GET", authorization); }
 
   @Get()
   list(@Headers("authorization") authorization: string) {

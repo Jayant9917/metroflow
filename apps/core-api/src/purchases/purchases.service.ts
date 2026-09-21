@@ -165,8 +165,8 @@ export class PurchasesService {
       requestId: uuidv7(),
     };
   }
-  async listForOperations(page = 1, pageSize = 25, status?: string) {
-    const rows = (await this.pool.query(`SELECT p.id, u.email, origin.id origin_id, origin.code origin_code, origin.name origin_name, destination.id destination_id, destination.code destination_code, destination.name destination_name, p.amount, p.currency, p.status, p.created_at, COUNT(*) OVER()::integer total_count FROM purchases p JOIN users u ON u.id=p.user_id JOIN stations origin ON origin.id=p.origin_station_id JOIN stations destination ON destination.id=p.destination_station_id WHERE ($3::text IS NULL OR p.status=$3) ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null])).rows;
+  async listForOperations(page = 1, pageSize = 25, status?: string, search?: string) {
+    const rows = (await this.pool.query(`SELECT p.id, u.email, origin.id origin_id, origin.code origin_code, origin.name origin_name, destination.id destination_id, destination.code destination_code, destination.name destination_name, p.amount, p.currency, p.status, p.created_at, COUNT(*) OVER()::integer total_count FROM purchases p JOIN users u ON u.id=p.user_id JOIN stations origin ON origin.id=p.origin_station_id JOIN stations destination ON destination.id=p.destination_station_id WHERE ($3::text IS NULL OR p.status=$3) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(p.id AS text) ILIKE $4) ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null, search ? `%${search}%` : null])).rows;
     const totalItems = rows[0]?.total_count ?? 0;
     return { purchases: rows.map((row) => ({ ...this.toPurchase(row), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }
