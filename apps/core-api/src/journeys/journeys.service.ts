@@ -76,8 +76,8 @@ export class JourneysService {
       requestId: uuidv7(),
     };
   }
-  async listForOperations(page = 1, pageSize = 25, status?: string) {
-    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email, COUNT(*) OVER()::integer total_count")} JOIN users u ON u.id=j.user_id WHERE ($3::text IS NULL OR j.status=$3) ORDER BY j.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null])).rows;
+  async listForOperations(page = 1, pageSize = 25, status?: string, search?: string) {
+    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email, COUNT(*) OVER()::integer total_count")} JOIN users u ON u.id=j.user_id WHERE ($3::text IS NULL OR j.status=$3) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(j.id AS text) ILIKE $4 OR CAST(j.ticket_id AS text) ILIKE $4) ORDER BY j.created_at DESC LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null, search ? `%${search}%` : null])).rows;
     const totalItems = rows[0]?.total_count ?? 0;
     return { journeys: rows.map((row) => ({ ...this.shape(row), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }
