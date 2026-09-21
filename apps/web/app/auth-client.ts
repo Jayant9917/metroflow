@@ -18,16 +18,17 @@ export function refreshAccessToken(): Promise<string | null> {
 }
 
 async function refresh() {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/refresh`,
-    {
-      method: "POST",
-      credentials: "include",
-    },
-  );
-  if (!response.ok) return null;
-  const data = (await response.json()) as { accessToken?: string };
-  if (!data.accessToken) return null;
-  setAccessToken(data.accessToken);
-  return data.accessToken;
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/refresh`,
+      { method: "POST", credentials: "include", signal: AbortSignal.timeout(10000) },
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as { accessToken?: string };
+    if (!data.accessToken) return null;
+    setAccessToken(data.accessToken);
+    return data.accessToken;
+  } catch {
+    return null;
+  }
 }
