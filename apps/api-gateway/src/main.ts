@@ -355,7 +355,7 @@ class AdminProxyController {
   @Get("outbox") outbox(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/outbox", authorization); }
   @Get("inconsistencies") inconsistencies(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/inconsistencies", authorization); }
   @Get("analytics") analytics(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/analytics", authorization); }
-  @Get("audit") audit(@Headers("authorization") authorization: string) { return this.get("/api/v1/admin/audit", authorization); }
+  @Get("audit") audit(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("action") action?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (action) query.set("action", action); return this.get(`/api/v1/admin/audit${query.size ? `?${query.toString()}` : ""}`, authorization); }
 }
 @Module({
   controllers: [

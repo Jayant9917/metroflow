@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { Roles } from "../auth/auth.decorators";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
@@ -14,7 +14,7 @@ export class AdminController {
   constructor(private readonly outbox: AdminOutboxService, private readonly inconsistencies: AdminInconsistenciesService, private readonly analytics: AdminAnalyticsService, private readonly audit: AdminAuditService) {}
   @Get("audit")
   @Roles("ADMIN")
-  async auditEvents() { return { success: true, data: { events: await this.audit.list() } }; }
+  async auditEvents(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("action") action?: string) { const p = page ? Number(page) : 1, s = pageSize ? Number(pageSize) : 25; if (!Number.isInteger(p) || p < 1 || !Number.isInteger(s) || s < 1 || s > 100) throw new BadRequestException("Invalid pagination parameters."); if (action && !["STATION_STATUS_CHANGED", "GATE_STATUS_CHANGED"].includes(action)) throw new BadRequestException("Invalid audit action."); return { success: true, data: await this.audit.list(p, s, action) }; }
   @Get("analytics")
   @Roles("ADMIN")
   async analyticsSummary() { return { success: true, data: { summary: await this.analytics.summary() } }; }
