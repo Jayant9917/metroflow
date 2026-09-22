@@ -3,7 +3,7 @@ import { Controller, Get, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { config } from "dotenv";
 import { resolve } from "node:path";
-import { startEmailConsumer } from "./kafka.consumer";
+import { notificationMetrics, startEmailConsumer } from "./kafka.consumer";
 config({ path: resolve(__dirname, "../../../.env") });
 @Controller()
 class HealthController {
@@ -11,7 +11,7 @@ class HealthController {
     return { status: "ok", service: "worker" };
   }
   @Get("metrics") metrics() {
-    return "# MetroFlow metrics\\n";
+    return { service: "worker", notifications: notificationMetrics };
   }
 }
 @Module({ controllers: [HealthController] })
