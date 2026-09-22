@@ -11,12 +11,14 @@ import { TicketsService } from "./tickets.service";
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}
   @Get("operations") @UseGuards(RolesGuard) @Roles("ADMIN", "OPERATOR")
-  operations(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string, @Query("search") search?: string) {
+  operations(@Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("status") status?: string, @Query("search") search?: string, @Query("sortBy") sortBy?: string, @Query("sortDirection") sortDirection?: string) {
     const parsedPage = this.parsePositiveInteger(page, "page", 1);
     const parsedPageSize = this.parsePositiveInteger(pageSize, "pageSize", 25);
     if (parsedPageSize > 100) throw new BadRequestException({ code: "VALIDATION_ERROR", message: "pageSize must be between 1 and 100." });
     if (status !== undefined && !["ISSUED", "IN_JOURNEY", "COMPLETED", "EXPIRED"].includes(status)) throw new BadRequestException({ code: "VALIDATION_ERROR", message: "Invalid ticket status." });
-    return this.tickets.listForOperations(parsedPage, parsedPageSize, status, search).then((data) => ({ success: true, data }));
+    if (sortBy && !["createdAt", "expiresAt", "status", "email"].includes(sortBy)) throw new BadRequestException("Invalid ticket sort field.");
+    if (sortDirection && !["asc", "desc"].includes(sortDirection)) throw new BadRequestException("Invalid sort direction.");
+    return this.tickets.listForOperations(parsedPage, parsedPageSize, status, search, sortBy, sortDirection).then((data) => ({ success: true, data }));
   }
   private parsePositiveInteger(value: string | undefined, name: string, fallback: number) {
     if (value === undefined) return fallback;
