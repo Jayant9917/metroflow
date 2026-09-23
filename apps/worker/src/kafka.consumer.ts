@@ -11,6 +11,31 @@ const eventKey = (eventId: string) => `metroflow:email:event:${eventId}`;
 const deadLetterKey = (eventId: string) => `metroflow:email:dead:${eventId}`;
 export const notificationMetrics = { processed: 0, sent: 0, retried: 0, deadLettered: 0 };
 
+export async function deliverWithRetry(
+  event: { eventId: string; type?: string },
+  sender: () => Promise<void>,
+  store: { set: (...args: any[]) => Promise<unknown> },
+  maxAttempts = 3,
+) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await sender();
+      notificationMetrics.sent++;
+      await store.set(eventKey(event.eventId), "sent", "EX", 604800);
+      return { status: "sent" as const, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      notificationMetrics.retried++;
+      if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  notificationMetrics.deadLettered++;
+  await store.set(deadLetterKey(event.eventId), JSON.stringify({ event, error: String(lastError) }), "EX", 604800);
+  await store.set(eventKey(event.eventId), "dead", "EX", 604800);
+  return { status: "dead" as const, attempts: maxAttempts };
+}
+
 export async function startEmailConsumer() {
   const kafka = new Kafka({
     clientId: "metroflow-worker",
@@ -38,41 +63,8 @@ export async function startEmailConsumer() {
       );
       if (!claimed) return;
 
-      let lastError: unknown;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await sendEmail(event);
-          notificationMetrics.sent++;
-          await redis.set(eventKey(event.eventId), "sent", "EX", 604800);
-          console.log(
-            JSON.stringify({
-              event: "email.sent",
-              eventId: event.eventId,
-              type: event.type,
-            }),
-          );
-          break;
-        } catch (error) {
-          lastError = error;
-          console.error(
-            JSON.stringify({
-              event: "email.retry",
-              eventId: event.eventId,
-              attempt,
-              error: String(error),
-            }),
-          );
-          notificationMetrics.retried++;
-          if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-          if (attempt === 3)
-            await redis.set(deadLetterKey(event.eventId), JSON.stringify({ event, error: String(error) }), "EX", 604800);
-          if (attempt === 3)
-            console.error(
-              JSON.stringify({ event: "email.failed", eventId: event.eventId }),
-            );
-        }
-      }
-      if (lastError) { notificationMetrics.deadLettered++; await redis.set(eventKey(event.eventId), "dead", "EX", 604800); }
+      const result = await deliverWithRetry(event, () => sendEmail(event), redis);
+      console.log(JSON.stringify({ event: result.status === "sent" ? "email.sent" : "email.failed", eventId: event.eventId, type: event.type, attempts: result.attempts }));
     },
   });
 }

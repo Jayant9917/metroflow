@@ -39,10 +39,12 @@ test('simulator PostgreSQL lifecycle (rollback-only fixtures)', async (t) => {
       return id;
     }
     const ticket = await fixture(routeStations[0], routeStations[3]);
+    const destinationTicket = await fixture(routeStations[0], routeStations[3]);
     const reverse = await fixture(routeStations[3], routeStations[0]);
     const gate = async (station, kind) => (await client.query("SELECT id FROM gates WHERE station_id=$1 AND type=$2 AND status='ACTIVE' ORDER BY code LIMIT 1", [station.id, kind])).rows[0].id;
     const entryGate = await gate(routeStations[0], 'ENTRY');
     const exitGate = await gate(routeStations[2], 'EXIT');
+    const destinationExitGate = await gate(routeStations[3], 'EXIT');
     let journeyId;
     await t.test('Nest constructor metadata survives the build', () => assert.equal(Reflect.getMetadata('design:paramtypes', JourneysController)[0], JourneysService));
     await t.test('route is ordered in both directions and rejects another owner', async () => {
@@ -93,6 +95,27 @@ test('simulator PostgreSQL lifecycle (rollback-only fixtures)', async (t) => {
       assert.equal(completed.status, 'COMPLETED');
       assert.equal(completed.actualExitStation.id, routeStations[2].id);
       assert.ok(completed.enteredAt && completed.exitedAt);
+    });
+    await t.test('destination exit completes a journey at the destination station', async () => {
+      const entry = await gates.validateEntry({ ticketIdentifier: destinationTicket, gateId: entryGate }, randomUUID());
+      assert.equal(entry.data.decision, 'ALLOW');
+      const exit = await gates.validateExit({ ticketIdentifier: destinationTicket, gateId: destinationExitGate }, randomUUID());
+      assert.equal(exit.data.decision, 'ALLOW');
+      const completed = (await tickets.get(template.user_id, destinationTicket)).data.ticket;
+      assert.equal(completed.status, 'COMPLETED');
+      const journey = (await journeys.list(template.user_id, destinationTicket, 'COMPLETED')).data.journeys[0];
+      assert.equal(journey.actualExitStation.id, routeStations[3].id);
+    });
+    await t.test('expired active journeys are converted to timed out and cannot exit', async () => {
+      const timeoutTicket = await fixture(routeStations[0], routeStations[3]);
+      const entry = await gates.validateEntry({ ticketIdentifier: timeoutTicket, gateId: entryGate }, randomUUID());
+      assert.equal(entry.data.decision, 'ALLOW');
+      await client.query("UPDATE journeys SET entered_at = NOW() - INTERVAL '2 hours', expires_at = NOW() - INTERVAL '1 second' WHERE ticket_id=$1", [timeoutTicket]);
+      const timedOut = (await journeys.list(template.user_id, timeoutTicket)).data.journeys[0];
+      assert.equal(timedOut.status, 'TIMED_OUT');
+      const exit = await gates.validateExit({ ticketIdentifier: timeoutTicket, gateId: destinationExitGate }, randomUUID());
+      assert.equal(exit.data.decision, 'REJECT');
+      assert.equal(exit.data.rejectionCode, 'JOURNEY_TIMED_OUT');
     });
     await t.test('expired ticket is rejected', async () => {
       const expired = await fixture(routeStations[0], routeStations[3], true);

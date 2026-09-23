@@ -30,5 +30,14 @@ for (const [path, label] of cases) {
   const { response } = await json(path, { headers: authorization });
   if (response.status !== 400) throw new Error(`${label} expected HTTP 400, received ${response.status}`);
 }
-console.log(`Admin query validation passed: ${cases.length} invalid-query cases.`);
+const validSorts = [
+  ["/api/v1/journeys/operations?sortBy=enteredAt&sortDirection=asc", "journey sorting"],
+  ["/api/v1/purchases/operations?sortBy=amount&sortDirection=desc", "payment sorting"],
+  ["/api/v1/admin/audit?sortBy=action&sortDirection=asc", "audit sorting"],
+];
+for (const [path, label] of validSorts) {
+  const { response } = await json(path, { headers: authorization });
+  if (!response.ok) throw new Error(`${label} expected a successful response, received ${response.status}`);
+}
+console.log(`Admin query validation passed: ${cases.length} invalid-query cases and ${validSorts.length} valid sorting cases.`);
 })().catch((error) => { console.error(error.message); process.exitCode = 1; });

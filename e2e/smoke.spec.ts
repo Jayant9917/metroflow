@@ -10,11 +10,10 @@ test.describe("MetroFlow public passenger shell", () => {
     await expect(page.getByRole("button", { name: /sign in/i })).toBeEnabled();
   });
 
-  test("new journey page has ordered station selectors", async ({ page }) => {
+  test("new journey page redirects unauthenticated users to login", async ({ page }) => {
     await page.goto("/journey/new");
-    await expect(page.getByRole("heading", { name: /plan your journey/i })).toBeVisible();
-    await expect(page.locator("#origin-station")).toHaveAttribute("name", "originStationId");
-    await expect(page.locator("#destination-station")).toHaveAttribute("name", "destinationStationId");
+    await expect(page).toHaveURL(/\/login\?returnTo=/);
+    await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
   });
 
   test("service health endpoints respond when the local stack is running", async ({ request }) => {
