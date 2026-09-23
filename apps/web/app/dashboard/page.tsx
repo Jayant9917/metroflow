@@ -9,20 +9,35 @@ import { Toast } from "../toast";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     void (async () => {
       const token = getAccessToken() ?? (await refreshAccessToken());
-      if (!token) return;
+      if (!token) {
+        window.location.replace("/login");
+        return;
+      }
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/v1/auth/me`, {
         credentials: "include",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        clearAccessToken();
+        window.location.replace("/login");
+        return;
+      }
       const body = await response.json();
-      if (["ADMIN", "OPERATOR"].includes(body.user?.role)) window.location.replace("/admin");
-    })().catch(() => undefined);
+      if (["ADMIN", "OPERATOR"].includes(body.user?.role)) {
+        window.location.replace("/admin");
+        return;
+      }
+      setAuthorized(true);
+    })().catch(() => window.location.replace("/login"));
   }, []);
+  if (!authorized) {
+    return <main className="dashboard"><section className="dashboard-content"><div className="feedback">Verifying your session...</div></section></main>;
+  }
   async function logout() {
     setLoading(true);
     setError("");

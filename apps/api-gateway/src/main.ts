@@ -333,7 +333,7 @@ class JourneysProxyController {
 }
 @Controller("api/v1/gate")
 class GateProxyController {
-  @Get("operations/events") async events(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("eventType") eventType?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (eventType) query.set("eventType", eventType); return this.forward(`/api/v1/gate/operations/events${query.size ? `?${query.toString()}` : ""}`, authorization); }
+  @Get("operations/events") async events(@Headers("authorization") authorization: string, @Query("page") page?: string, @Query("pageSize") pageSize?: string, @Query("eventType") eventType?: string) { const query = new URLSearchParams(); if (page) query.set("page", page); if (pageSize) query.set("pageSize", pageSize); if (eventType) query.set("eventType", eventType); return this.forward(`/internal/v1/gate/operations/events${query.size ? `?${query.toString()}` : ""}`, authorization); }
   @Get("entry-gates") async gates() { return this.listGates("entry-gates"); }
   @Get("exit-gates") async exitGates() { return this.listGates("exit-gates"); }
   private async listGates(path: string) { const response = await fetch(`${process.env.CORE_API_URL ?? "http://localhost:3002"}/internal/v1/gate/${path}`); const data = await response.json(); if (!response.ok) throw new HttpException(data, response.status); return data; }

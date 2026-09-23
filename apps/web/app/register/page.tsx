@@ -1,9 +1,11 @@
 "use client";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Toast } from "../toast";
 import { PasswordField } from "../password-field";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -30,10 +32,7 @@ export default function RegisterPage() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Registration failed.");
-      setMessage("Account created. You can now sign in.");
-      setEmail("");
-      setPassword("");
-      setConfirm("");
+      router.replace("/login?registered=1");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Service temporarily unavailable.",

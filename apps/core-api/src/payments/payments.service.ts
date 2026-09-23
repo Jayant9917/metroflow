@@ -3,11 +3,16 @@ import { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 import { InitiatePaymentDto } from "./initiate-payment.dto";
 import { TicketsService } from "../tickets/tickets.service";
+import { KafkaPublisher } from "../infrastructure/kafka.publisher";
 
 @Injectable()
 export class PaymentsService {
   private readonly pool = new Pool({ connectionString: process.env.CORE_DATABASE_URL });
-  constructor(private readonly tickets: TicketsService) {}
+  constructor(private readonly tickets: TicketsService, private readonly publisher: KafkaPublisher) {}
+  private async notifyFailure(userId: string, purchaseId: string, reason: string) {
+    const user = (await this.pool.query("SELECT email FROM users WHERE id=$1", [userId])).rows[0];
+    if (user?.email) void this.publisher.publish({ eventId: uuidv7(), type: "payment.failed", email: user.email, purchaseId, reason }).catch((error) => console.error("payment failure notification publish failed", error));
+  }
 
   async initiate(userId: string, dto: InitiatePaymentDto, idempotencyKey: string) {
     if (!idempotencyKey) throw new HttpException({ code: "VALIDATION_ERROR", message: "Idempotency-Key is required." }, HttpStatus.BAD_REQUEST);
@@ -30,10 +35,11 @@ export class PaymentsService {
         body: JSON.stringify({ purchaseId: purchase.id, userId, amount: purchase.amount, currency: purchase.currency }),
       });
     } catch {
+      await this.notifyFailure(userId, purchase.id, "Payment service is temporarily unavailable.");
       throw new HttpException({ code: "PAYMENT_SERVICE_UNAVAILABLE", message: "Payment service is temporarily unavailable." }, HttpStatus.BAD_GATEWAY);
     }
     const data = await response.json().catch(() => ({ code: "PAYMENT_PROVIDER_ERROR", message: "Payment service returned an invalid response." }));
-    if (!response.ok) throw new HttpException(data, response.status);
+    if (!response.ok) { await this.notifyFailure(userId, purchase.id, data.message ?? "Payment initiation failed."); throw new HttpException(data, response.status); }
     await this.pool.query("UPDATE purchases SET status = 'PAYMENT_PENDING', updated_at = NOW() WHERE id = $1 AND status IN ('CREATED', 'PAYMENT_PENDING')", [purchase.id]);
     const payment = data.data?.payment;
     return {
@@ -58,15 +64,18 @@ export class PaymentsService {
         body: JSON.stringify(dto),
       });
     } catch {
+      await this.notifyFailure(userId, dto.razorpayOrderId, "Payment service is temporarily unavailable.");
       throw new HttpException({ code: "PAYMENT_SERVICE_UNAVAILABLE", message: "Payment service is temporarily unavailable." }, HttpStatus.BAD_GATEWAY);
     }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new HttpException(data, response.status);
+    if (!response.ok) { await this.notifyFailure(userId, data.data?.purchaseId ?? dto.razorpayOrderId, data.message ?? "Payment confirmation failed."); throw new HttpException(data, response.status); }
     const purchaseId = data.data?.purchaseId;
     const owned = purchaseId && (await this.pool.query("SELECT id FROM purchases WHERE id = $1 AND user_id = $2", [purchaseId, userId])).rowCount;
     if (!owned) throw new HttpException({ code: "PURCHASE_NOT_FOUND", message: "Purchase not found." }, HttpStatus.NOT_FOUND);
     await this.pool.query("UPDATE purchases SET status = 'PAID', updated_at = NOW() WHERE id = $1 AND status IN ('CREATED', 'PAYMENT_PENDING')", [purchaseId]);
     const ticket = await this.tickets.issueForPurchase(purchaseId, data.data.paymentId);
+    const user = (await this.pool.query("SELECT email FROM users WHERE id=$1", [userId])).rows[0];
+    if (user?.email) void this.publisher.publish({ eventId: uuidv7(), type: "payment.succeeded", email: user.email, purchaseId, amount: String(ticket.paidAmount), currency: ticket.currency }).catch((error) => console.error("payment notification publish failed", error));
     data.data.ticket = ticket;
     return data;
   }

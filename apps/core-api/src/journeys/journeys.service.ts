@@ -7,7 +7,7 @@ export class JourneysService {
   private readonly pool = new Pool({
     connectionString: process.env.CORE_DATABASE_URL,
   });
-  private select = `SELECT j.*, es.id entry_station_id, es.code entry_station_code, es.name entry_station_name, xs.id actual_exit_station_id, xs.code actual_exit_station_code, xs.name actual_exit_station_name FROM journeys j JOIN stations es ON es.id=j.entry_station_id LEFT JOIN stations xs ON xs.id=j.exit_station_id`;
+  private select = `SELECT j.*, t.destination_station_id, ds.id destination_station_id, ds.code destination_station_code, ds.name destination_station_name, es.id entry_station_id, es.code entry_station_code, es.name entry_station_name, xs.id actual_exit_station_id, xs.code actual_exit_station_code, xs.name actual_exit_station_name FROM journeys j JOIN tickets t ON t.id=j.ticket_id JOIN stations ds ON ds.id=t.destination_station_id JOIN stations es ON es.id=j.entry_station_id LEFT JOIN stations xs ON xs.id=j.exit_station_id`;
   private shape(row: any) {
     return {
       id: row.id,
@@ -17,6 +17,11 @@ export class JourneysService {
         id: row.entry_station_id,
         code: row.entry_station_code,
         name: row.entry_station_name,
+      },
+      destinationStation: {
+        id: row.destination_station_id,
+        code: row.destination_station_code,
+        name: row.destination_station_name,
       },
       actualExitStation: row.actual_exit_station_id
         ? {
@@ -79,7 +84,7 @@ export class JourneysService {
   async listForOperations(page = 1, pageSize = 25, status?: string, search?: string, sortBy = "createdAt", sortDirection = "desc") {
     const columns: Record<string,string> = { createdAt: "j.created_at", enteredAt: "j.entered_at", status: "j.status", email: "u.email" };
     const order = `${columns[sortBy] ?? columns.createdAt} ${sortDirection === "asc" ? "ASC" : "DESC"}`;
-    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email, COUNT(*) OVER()::integer total_count")} JOIN users u ON u.id=j.user_id WHERE ($3::text IS NULL OR j.status=$3) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(j.id AS text) ILIKE $4 OR CAST(j.ticket_id AS text) ILIKE $4) ORDER BY ${order} LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null, search ? `%${search}%` : null])).rows;
+    const rows = (await this.pool.query(`${this.select.replace("SELECT j.*", "SELECT j.*, u.email, COUNT(*) OVER()::integer total_count")} JOIN users u ON u.id=j.user_id WHERE ($3::text IS NULL OR j.status=$3::journey_status_type) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(j.id AS text) ILIKE $4 OR CAST(j.ticket_id AS text) ILIKE $4) ORDER BY ${order} LIMIT $1 OFFSET $2`, [pageSize, (page - 1) * pageSize, status ?? null, search ? `%${search}%` : null])).rows;
     const totalItems = rows[0]?.total_count ?? 0;
     return { journeys: rows.map((row) => ({ ...this.shape(row), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }

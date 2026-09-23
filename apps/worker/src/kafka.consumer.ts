@@ -19,7 +19,7 @@ export async function startEmailConsumer() {
   const consumer = kafka.consumer({ groupId: "metroflow-email-worker" });
   await consumer.connect();
   await consumer.subscribe({
-    topics: ["otp.requested", "password.reset.requested"],
+    topics: ["otp.requested", "password.reset.requested", "ticket.issued", "payment.succeeded", "payment.failed"],
     fromBeginning: false,
   });
   await redis.connect();

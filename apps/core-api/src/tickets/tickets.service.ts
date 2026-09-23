@@ -1,9 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+import { KafkaPublisher } from "../infrastructure/kafka.publisher";
 
 @Injectable()
 export class TicketsService {
+  constructor(private readonly publisher: KafkaPublisher) {}
   private readonly pool = new Pool({
     connectionString: process.env.CORE_DATABASE_URL,
   });
@@ -52,7 +54,7 @@ export class TicketsService {
       }
       const purchase = (
         await client.query(
-          `SELECT p.*, o.id origin_id, o.code origin_code, o.name origin_name, d.id destination_id, d.code destination_code, d.name destination_name FROM purchases p JOIN stations o ON o.id = p.origin_station_id JOIN stations d ON d.id = p.destination_station_id WHERE p.id = $1 AND p.status IN ('PAID', 'TICKET_ISSUED') FOR UPDATE`,
+          `SELECT p.*, u.email user_email, o.id origin_id, o.code origin_code, o.name origin_name, d.id destination_id, d.code destination_code, d.name destination_name FROM purchases p JOIN users u ON u.id=p.user_id JOIN stations o ON o.id = p.origin_station_id JOIN stations d ON d.id = p.destination_station_id WHERE p.id = $1 AND p.status IN ('PAID', 'TICKET_ISSUED') FOR UPDATE`,
           [purchaseId],
         )
       ).rows[0];
@@ -84,6 +86,7 @@ export class TicketsService {
         [purchaseId],
       );
       await client.query("COMMIT");
+      void this.publisher.publish({ eventId: uuidv7(), type: "ticket.issued", email: purchase.user_email, ticketId: ticket.id, purchaseId: purchase.id, amount: purchase.amount, currency: purchase.currency, origin: purchase.origin_name, destination: purchase.destination_name }).catch((error) => console.error("ticket notification publish failed", error));
       return this.shape({
         ...ticket,
         origin_id: purchase.origin_id,
@@ -118,7 +121,7 @@ export class TicketsService {
     const offset = (page - 1) * pageSize;
     const columns: Record<string,string> = { createdAt: "t.created_at", expiresAt: "t.expires_at", status: "t.status", email: "u.email" };
     const order = `${columns[sortBy] ?? columns.createdAt} ${sortDirection === "asc" ? "ASC" : "DESC"}`;
-    const result = await this.pool.query(`SELECT t.*, u.email, o.code origin_code, o.name origin_name, d.code destination_code, d.name destination_name, COUNT(*) OVER()::integer total_count FROM tickets t JOIN users u ON u.id=t.user_id JOIN stations o ON o.id=t.origin_station_id JOIN stations d ON d.id=t.destination_station_id WHERE ($3::text IS NULL OR t.status=$3) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(t.id AS text) ILIKE $4 OR CAST(t.purchase_id AS text) ILIKE $4) ORDER BY ${order} LIMIT $1 OFFSET $2`, [pageSize, offset, status ?? null, search ? `%${search}%` : null]);
+    const result = await this.pool.query(`SELECT t.*, u.email, o.code origin_code, o.name origin_name, d.code destination_code, d.name destination_name, COUNT(*) OVER()::integer total_count FROM tickets t JOIN users u ON u.id=t.user_id JOIN stations o ON o.id=t.origin_station_id JOIN stations d ON d.id=t.destination_station_id WHERE ($3::text IS NULL OR t.status=$3::ticket_status_type) AND ($4::text IS NULL OR u.email ILIKE $4 OR CAST(t.id AS text) ILIKE $4 OR CAST(t.purchase_id AS text) ILIKE $4) ORDER BY ${order} LIMIT $1 OFFSET $2`, [pageSize, offset, status ?? null, search ? `%${search}%` : null]);
     const totalItems = result.rows[0]?.total_count ?? 0;
     return { tickets: result.rows.map((row) => ({ ...this.shape({ ...row, origin_id: row.origin_station_id, destination_id: row.destination_station_id }), email: row.email })), pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) } };
   }

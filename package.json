@@ -11,6 +11,7 @@
     "test:e2e:simulator": "playwright test e2e/simulator-resume.spec.ts --workers=1",
     "test:simulator-api": "pnpm --filter @metroflow/core-api build && node scripts/test-simulator-api.cjs"
     ,"test:permissions": "node scripts/test-permissions.cjs"
+    ,"test:admin-queries": "node scripts/test-admin-query-validation.cjs"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

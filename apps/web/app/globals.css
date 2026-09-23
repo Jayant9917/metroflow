@@ -463,6 +463,71 @@ h2 {
   border-color: #9fc2f4;
   transform: translateY(-2px);
 }
+
+.journey-detail-panel {
+  max-width: 980px;
+}
+
+.journey-detail-panel h2 {
+  margin: 10px 0 8px;
+  color: #102b4e;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -1.5px;
+}
+
+.journey-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e1eaf4;
+}
+
+.journey-detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #d8e4f2;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.admin-detail-json {
+  max-width: 100%;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid #d8e4f2;
+  border-radius: 16px;
+  background: #102b4e;
+  color: #eaf3ff;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.journey-detail-grid strong {
+  color: #607895;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.journey-detail-grid span {
+  overflow-wrap: anywhere;
+  color: #102b4e;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+  .journey-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .dashboard-card-link h2 {
   min-height: 48px;
 }
