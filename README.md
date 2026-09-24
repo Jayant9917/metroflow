@@ -112,6 +112,20 @@ node scripts/test-simulator-api.cjs
 
 The simulator database tests cover route ordering, ownership, invalid entry, duplicate scans, intermediate exit, fare retention, completion and expiry. Test fixtures are rolled back.
 
+The complete local verification commands are:
+
+```powershell
+pnpm typecheck
+pnpm test:lifecycle
+pnpm test:permissions
+pnpm test:admin-queries
+pnpm test:worker-delivery
+pnpm test:worker-notifications
+pnpm test:e2e
+```
+
+The browser suite covers authenticated operations access, detail pages, sorting controls, session protection, and desktop/mobile layouts. The simulator route test is skipped unless `E2E_TICKET_ID` is supplied.
+
 ## Documentation
 
 - [`docs/simulator.md`](docs/simulator.md) — simulator requirements and completion criteria
@@ -128,3 +142,9 @@ The simulator database tests cover route ordering, ownership, invalid entry, dup
 ## V1 scope
 
 V1 includes authentication, fare quotes, Razorpay payments, tickets, QR identifiers, entry and exit gates, intermediate exits, journey lifecycle, animated simulation, shared contract foundations, and backend regression tests. Advanced 3D, live GPS, real-time feeds, physical scanners, multiplayer, refunds, and multi-line routing are outside the current scope.
+
+## V1 status
+
+The functional V1 is complete and the Razorpay Test Mode success/failure flow has been manually verified. Remaining work is production hardening: credential rotation, secret management, deployment configuration, monitoring and alerting, backups and restore procedures, rate limiting, audit retention, and replacement of the simplified demo line if authoritative network data is required.
+
+The detailed local deployment and monitoring checklist is maintained in `v1-production-readiness.md` and is intentionally excluded from the GitHub codebase push.
